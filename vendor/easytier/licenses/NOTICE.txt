@@ -1,0 +1,44 @@
+This package includes a modified EasyTier 2.6.4 build, 2.6.4-civ6.2.
+Modifications for Civ6 Relay, 2026-10-30: fast relay failover between
+credential clients, recovery hysteresis, cached authenticated coordinator
+selection, and data-path route status. The wire format is unchanged.
+License: GNU LGPL version 3.
+Source commit: 8428a89d2dabc94c97d370ec607c6ca142473626
+Upstream: https://github.com/EasyTier/EasyTier
+Release: https://github.com/EasyTier/EasyTier/releases/tag/v2.6.4
+The EasyTier source snapshot and build manifests are included in
+EasyTier-2.6.4-source.tar.gz. The public source archive omits only the six
+Packet.dll/Packet.lib artifacts; retained source files are unchanged.
+Original and published archive hashes and omitted artifact hashes are in
+BUILD-MANIFEST.json. Dependency revisions are in its Cargo.lock.
+Apply EasyTier-fast-failover.patch to that source; build instructions are
+in BUILD-CIV6.txt. The same patched source is used for Linux and Windows.
+The desktop launcher invokes EasyTier as a separate process.
+
+The unchanged Windows components redistributed here are Wintun 0.14.1
+and WinDivert. Their licenses are provided alongside this notice. Wintun
+uses the separate official Prebuilt Binaries License in Wintun-LICENSE.txt.
+Wintun: https://www.wintun.net/
+WinDivert: https://reqrypt.org/windivert.html
+
+Windows cross-build source and build-only dependency path changes are
+documented in BUILD-CIV6.txt; the modified dependency source is included as
+windivert-rust-adcc56d-civ6-source.tar.gz. Optional Win7 thunks are not used.
+
+Civ6.2 also adds an optional dhcp_subnet setting and randomizes the first
+automatic address candidate to avoid simultaneous join collisions.
+
+Public packaging variant 3.2.5-no-npcap (2026-10-31) removes the Windows
+pnet interface-enumeration fallback. The existing network-interface/IP
+Helper enumeration is preserved; a failure is logged and yields an empty
+list. The selected Cargo features exclude faketcp. Rebuilt Windows
+executables have no Packet.dll import and require no Npcap installation.
+The native version remains 2.6.4-civ6.2; protocol and normal network
+behavior are unchanged. Exact source and patch hashes are in
+BUILD-MANIFEST.json.
+
+The Windows linker uses only the legacy WinPcap 4.1.2 SDK x64 import
+library as a private build input; it is not redistributed in this package.
+Its official BSD-style license is preserved in WinPcap-SDK-LICENSE.txt,
+and its source URL and hashes are in BUILD-MANIFEST.json. This does not
+license or redistribute any Npcap DLL.

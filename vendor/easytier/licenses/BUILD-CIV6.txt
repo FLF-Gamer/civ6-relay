@@ -1,0 +1,68 @@
+Modified build: 2.6.4-civ6.2, packaging variant 3.2.5-no-npcap, 2026-10-31
+License: LGPL-3.0-only, see EasyTier-LGPL-3.0.txt and GPL-3.0.txt.
+
+1. Extract EasyTier-2.6.4-source.tar.gz.
+2. In the extracted EasyTier source directory:
+   patch -p1 < ../EasyTier-fast-failover.patch
+3. Use Rust 1.95.0 and the included Cargo.lock without updating dependencies.
+   Build EasyTier only, with --no-default-features --features tun,aes-gcm,zstd.
+   Linux target: x86_64-unknown-linux-musl (static).
+   Windows target: x86_64-pc-windows-msvc (static CRT).
+   Binaries: easytier-core and easytier-cli.
+
+Build environment: clang/lld/llvm, protobuf compiler and standard protobuf
+headers, CMake/Ninja; Zig 0.15.2 with cargo-zigbuild 0.24.0 for Linux;
+cargo-xwin 0.23.1 with Microsoft CRT/SDK for Windows.
+The server source bundle includes scripts/build-mesh-fork.py and
+build/mesh-fork.Dockerfile for the same build. All dependencies are public.
+
+Examples after adding the Rust targets with rustup:
+  cargo zigbuild --locked --release --target x86_64-unknown-linux-musl -p easytier --no-default-features --features tun,aes-gcm,zstd --bin easytier-core --bin easytier-cli
+  cargo xwin build --locked --release --target x86_64-pc-windows-msvc -p easytier --no-default-features --features tun,aes-gcm,zstd --bin easytier-core --bin easytier-cli
+
+Windows 10/11 are supported. The optional Win7 VC-LTL/YY-Thunks build
+step is removed by the EasyTier patch; the standard static MSVC CRT is used.
+
+Cargo.lock pins windivert-rust to adcc56d1550f7b5377ec2b3429f413ee24a77375.
+The included windivert-rust-adcc56d-civ6-source.tar.gz contains the dependency
+source used for this Windows build, including its vendored WinDivert C source.
+Only two build-script path strings were changed from backslashes to slashes:
+  windivert-sys/build/compile/msvc.rs: vendor/include, vendor/dll/windivert.c
+No dependency runtime Rust or C code was changed. The server source package
+includes scripts/fix-windivert-build.py to apply these build-only path changes
+to the pinned Cargo checkout before running cargo-xwin.
+
+Zstd is retained because upstream RPC advertises Zstd support for route sync.
+Game data compression remains at its default (none).
+The two Windows driver components, wintun.dll and WinDivert64.sys, remain
+the upstream release files. Wintun-LICENSE.txt is the separate official
+Wintun 0.14.1 prebuilt binaries license, not the source-code GPL license.
+
+Public packaging variant 3.2.5-no-npcap:
+Windows interface enumeration keeps its existing network-interface/Windows
+IP Helper path. If it fails, the client logs the failure and returns an
+empty interface list rather than invoking the pnet/Npcap fallback. Normal
+interface enumeration and the wire format are unchanged. The displayed
+native version stays 2.6.4-civ6.2. The build excludes the optional faketcp
+feature, whose Windows pnet fallback would otherwise require Npcap.
+Packet.dll is not shipped and Npcap is not a runtime prerequisite.
+
+EasyTier-2.6.4-source.tar.gz preserves the upstream Rust/Cargo and all other
+retained files byte-for-byte. Only Packet.dll and Packet.lib files under
+easytier/third_party/{x86_64,i686,arm64} are omitted. This avoids publishing
+the Npcap DLLs included in the upstream source archive. Exact original and
+sanitized source archive hashes, the six omitted paths and hashes, and the
+local patch hash are recorded in BUILD-MANIFEST.json.
+
+
+Windows build-only import library:
+pnet 0.35.0 still declares Packet.lib at link time even though this variant
+has no live Packet calls. scripts/build-mesh-fork.py downloads the official
+WinPcap 4.1.2 SDK, verifies the SDK and x64 import-library SHA256 hashes, and
+stores only WpdPack/Lib/x64/Packet.lib in .build/mesh-build-imports. Docker
+mounts this private directory at /build-imports with LIB=/build-imports.
+For the manual cargo-xwin example above, set LIB to the same import-library
+directory. SDK URL and both fixed hashes are in BUILD-MANIFEST.json.
+WinPcap-SDK-LICENSE.txt preserves the official BSD-style license notice.
+This is a build-only import library. No WinPcap/Npcap DLL, driver or installer
+is shipped; the Windows client needs no Npcap installation.

@@ -1,0 +1,41 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Generated personal mesh credentials and earlier tunnel keys.
+*.key
+*.psk
+*.conf
+/clients/
+/state.json
+.build/
+dist/
+
+profile.json
+credentials.json
+preferences.json
+network.toml
+
+# Local runtime and secrets
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.log
+common-profile.json
+identity.json
+managed.json
+trusted-server.json
+server.toml
+
+# Native release artifacts are distributed through GitHub Releases
+/vendor/easytier/linux-x86_64/easytier-core
+/vendor/easytier/linux-x86_64/easytier-cli
+/vendor/easytier/windows-x86_64/*.exe
+/vendor/easytier/windows-x86_64/*.dll
+/vendor/easytier/windows-x86_64/*.sys
+/vendor/linux-amd64/wg
+
+/vendor/linux-amd64/wireguard-go
+/vendor/sources/wireguard-go.tar.xz

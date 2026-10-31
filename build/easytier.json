@@ -1,0 +1,34 @@
+{
+  "version": "2.6.4",
+  "build_version": "2.6.4-civ6.2",
+  "patch": "build/easytier-fast-failover.patch",
+  "commit": "8428a89d2dabc94c97d370ec607c6ca142473626",
+  "source": "https://github.com/EasyTier/EasyTier/tree/v2.6.4",
+  "license": "LGPL-3.0-only",
+  "assets": {
+    "linux-x86_64": {
+      "url": "https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-linux-x86_64-v2.6.4.zip",
+      "sha256": "61b659eaedba658fa66fe47d17e1426cdd77e5d02fa15fed447bb4357c09dfd6",
+      "files": [
+        "easytier-core",
+        "easytier-cli"
+      ]
+    },
+    "windows-x86_64": {
+      "url": "https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-windows-x86_64-v2.6.4.zip",
+      "sha256": "27af91e270e554709b048bd32327fefd2dfce5062ae1e8701af7550c6f525f84",
+      "files": [
+        "easytier-core.exe",
+        "easytier-cli.exe",
+        "wintun.dll",
+        "WinDivert64.sys"
+      ]
+    }
+  },
+  "build_features": [
+    "tun",
+    "aes-gcm",
+    "zstd"
+  ],
+  "rust_toolchain": "1.95.0"
+}

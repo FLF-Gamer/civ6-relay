@@ -1,0 +1,575 @@
+--- a/easytier/build.rs
++++ b/easytier/build.rs
+@@ -143,12 +143,8 @@
+         }
+     }
+ 
+-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+-    // enable thunk-rs when target os is windows and arch is x86_64 or i686
+-    if target_os == "windows" && (target_arch == "x86" || target_arch == "x86_64") {
+-        thunk::thunk();
+-    }
++    // Civ6 Relay supports Windows 10/11. Use the standard static CRT rather
++    // than downloading optional Win7 VC-LTL/YY-Thunks compatibility libraries.
+ 
+     #[cfg(target_os = "windows")]
+     WindowsBuild::check_for_win();
+--- a/easytier/src/common/constants.rs
++++ b/easytier/src/common/constants.rs
+@@ -34,9 +34,4 @@
+ 
+ pub const WIN_SERVICE_WORK_DIR_REG_KEY: &str = "SOFTWARE\\EasyTier\\Service\\WorkDir";
+ 
+-pub const EASYTIER_VERSION: &str = git_version::git_version!(
+-    args = ["--abbrev=8", "--always", "--dirty=~"],
+-    prefix = concat!(env!("CARGO_PKG_VERSION"), "-"),
+-    suffix = "",
+-    fallback = env!("CARGO_PKG_VERSION")
+-);
++pub const EASYTIER_VERSION: &str = "2.6.4-civ6.2";
+--- a/easytier/src/common/config.rs
++++ b/easytier/src/common/config.rs
+@@ -183,6 +183,7 @@
+ 
+     fn get_dhcp(&self) -> bool;
+     fn set_dhcp(&self, dhcp: bool);
++    fn get_dhcp_subnet(&self) -> Option<cidr::Ipv4Inet> { None }
+ 
+     fn add_proxy_cidr(
+         &self,
+@@ -534,6 +535,7 @@
+     ipv6_public_addr_auto: Option<bool>,
+     ipv6_public_addr_prefix: Option<String>,
+     dhcp: Option<bool>,
++    dhcp_subnet: Option<cidr::Ipv4Inet>,
+     network_identity: Option<NetworkIdentity>,
+     listeners: Option<Vec<url::Url>>,
+     mapped_listeners: Option<Vec<url::Url>>,
+@@ -757,6 +759,10 @@
+ 
+     fn set_dhcp(&self, dhcp: bool) {
+         self.config.lock().unwrap().dhcp = Some(dhcp);
++    }
++
++    fn get_dhcp_subnet(&self) -> Option<cidr::Ipv4Inet> {
++        self.config.lock().unwrap().dhcp_subnet
+     }
+ 
+     fn add_proxy_cidr(
+--- a/easytier/src/instance/instance.rs
++++ b/easytier/src/instance/instance.rs
+@@ -829,7 +829,9 @@
+         let nic_ctx = self.nic_ctx.clone();
+         let _peer_packet_receiver = self.peer_packet_receiver.clone();
+         tokio::spawn(async move {
+-            let default_ipv4_addr = Ipv4Inet::new(Ipv4Addr::new(10, 126, 126, 0), 24).unwrap();
++            let configured_subnet = global_ctx_c.config.get_dhcp_subnet();
++            let default_ipv4_addr = configured_subnet.unwrap_or_else(||
++                Ipv4Inet::new(Ipv4Addr::new(10, 126, 126, 0), 24).unwrap());
+             let mut current_dhcp_ip: Option<Ipv4Inet> = None;
+             let mut next_sleep_time = 0;
+             let nic_closed_notifier = Arc::new(Notify::new());
+@@ -861,10 +863,14 @@
+                         continue;
+                     };
+ 
+-                    used_ipv4.insert(peer_ipv4_addr.into());
+-                }
+-
+-                let dhcp_inet = used_ipv4.iter().next().unwrap_or(&default_ipv4_addr);
++                    let addr: Ipv4Inet = peer_ipv4_addr.into();
++                    if configured_subnet.is_none_or(|subnet| addr.network() == subnet.network()) {
++                        used_ipv4.insert(addr);
++                    }
++                }
++
++                let dhcp_inet = configured_subnet.as_ref()
++                    .unwrap_or_else(|| used_ipv4.iter().next().unwrap_or(&default_ipv4_addr));
+                 // if old ip is already in this subnet and not conflicted, use it
+                 if let Some(ip) = current_dhcp_ip
+                     && ip.network() == dhcp_inet.network()
+@@ -874,7 +880,12 @@
+                 }
+ 
+                 // find an available ip in the subnet
+-                let candidate_ipv4_addr = dhcp_inet.network().iter().find(|ip| {
++                // A random starting point avoids a join burst choosing the same first IP.
++                // Once allocated, the existing conflict check retains the address.
++                let start = if configured_subnet.is_some() { rand::thread_rng().gen_range(2..255) } else { 0 };
++                let subnet = dhcp_inet.network();
++                let candidate_ipv4_addr = subnet.iter().skip(start)
++                    .chain(subnet.iter().take(start)).find(|ip| {
+                     ip.address() != dhcp_inet.first_address()
+                         && ip.address() != dhcp_inet.last_address()
+                         && !used_ipv4.contains(ip)
+--- a/easytier/src/peers/mod.rs
++++ b/easytier/src/peers/mod.rs
+@@ -1,4 +1,5 @@
+ mod graph_algo;
++mod fast_failover;
+ 
+ pub mod acl_filter;
+ pub mod credential_manager;
+--- /dev/null
++++ b/easytier/src/peers/fast_failover.rs
+@@ -0,0 +1,65 @@
++//! Data-path health is independent from connection lifetime. A failed probe
++//! enables the prepared relay; two newer successful probes restore direct use.
++#[derive(Default)]
++pub(crate) struct ProbeHealth {
++    last_seq: Option<u32>,
++    good: u8,
++    suspect: bool,
++}
++
++impl ProbeHealth {
++    pub(crate) fn observe(&mut self, seq: u32, success: bool) -> Option<bool> {
++        if let Some(last) = self.last_seq {
++            let delta = seq.wrapping_sub(last);
++            if delta == 0 || delta >= (1 << 31) {
++                return None;
++            }
++        }
++        self.last_seq = Some(seq);
++        if success {
++            self.good = self.good.saturating_add(1);
++            if self.good >= 2 {
++                self.suspect = false;
++            }
++        } else {
++            self.good = 0;
++            self.suspect = true;
++        }
++        Some(self.suspect)
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::ProbeHealth;
++
++    #[test]
++    fn first_failure_relays_and_two_new_successes_restore() {
++        let mut h = ProbeHealth::default();
++        assert_eq!(h.observe(1, false), Some(true));
++        assert_eq!(h.observe(2, true), Some(true));
++        assert_eq!(h.observe(3, true), Some(false));
++    }
++
++    #[test]
++    fn late_outcomes_cannot_override_newer_health() {
++        let mut h = ProbeHealth::default();
++        assert_eq!(h.observe(5, true), Some(false));
++        assert_eq!(h.observe(6, true), Some(false));
++        assert_eq!(h.observe(4, false), None);
++        assert_eq!(h.observe(7, false), Some(true));
++        assert_eq!(h.observe(6, true), None);
++        assert_eq!(h.observe(8, true), Some(true));
++        assert_eq!(h.observe(8, true), None);
++        assert_eq!(h.observe(9, true), Some(false));
++    }
++
++    #[test]
++    fn wrapping_probe_sequence_keeps_progress() {
++        let mut h = ProbeHealth::default();
++        assert_eq!(h.observe(u32::MAX - 1, false), Some(true));
++        assert_eq!(h.observe(u32::MAX, true), Some(true));
++        assert_eq!(h.observe(0, true), Some(false));
++        assert_eq!(h.observe(u32::MAX, false), None);
++    }
++}
+--- a/easytier/src/peers/peer_conn_ping.rs
++++ b/easytier/src/peers/peer_conn_ping.rs
+@@ -1,7 +1,7 @@
+ use std::{
+     sync::{
+         Arc,
+-        atomic::{AtomicU32, Ordering},
++        atomic::{AtomicBool, AtomicU32, Ordering},
+     },
+     time::Duration,
+ };
+@@ -13,6 +13,7 @@
+     time::{Interval, timeout},
+ };
+ use tracing::Instrument;
++use super::fast_failover::ProbeHealth;
+ 
+ use crate::{
+     common::{PeerId, error::Error},
+@@ -26,6 +27,7 @@
+ };
+ 
+ struct PingIntervalController {
++    fast_failover: bool,
+     throughput: Arc<Throughput>,
+     loss_counter: Arc<AtomicU32>,
+ 
+@@ -55,13 +57,14 @@
+ }
+ 
+ impl PingIntervalController {
+-    fn new(throughput: Arc<Throughput>, loss_counter: Arc<AtomicU32>) -> Self {
++    fn new(throughput: Arc<Throughput>, loss_counter: Arc<AtomicU32>, fast_failover: bool) -> Self {
+         let last_throughput = (*throughput).clone();
+ 
+         Self {
++            fast_failover,
+             throughput,
+             loss_counter,
+-            interval: tokio::time::interval(Duration::from_secs(1)),
++            interval: tokio::time::interval(if fast_failover { Duration::from_millis(250) } else { Duration::from_secs(1) }),
+             logic_time: 0,
+             last_send_logic_time: 0,
+ 
+@@ -86,6 +89,9 @@
+     }
+ 
+     fn should_send_ping(&mut self) -> bool {
++        if self.fast_failover {
++            return true;
++        }
+         if self.loss_counter.load(Ordering::Relaxed) > 0 {
+             self.backoff_idx = 0;
+         } else if self.tx_increase() && !self.rx_increase() {
+@@ -112,6 +118,8 @@
+ }
+ 
+ pub struct PeerConnPinger {
++    fast_failover: bool,
++    suspect: Arc<AtomicBool>,
+     my_peer_id: PeerId,
+     peer_id: PeerId,
+     sink: MpscTunnelSender,
+@@ -143,8 +151,12 @@
+         loss_rate_stats: Arc<AtomicU32>,
+         throughput_stats: Arc<Throughput>,
+         control_metrics: AggregateTrafficMetrics,
++        fast_failover: bool,
++        suspect: Arc<AtomicBool>,
+     ) -> Self {
+         Self {
++            fast_failover,
++            suspect,
+             my_peer_id,
+             peer_id,
+             sink,
+@@ -170,6 +182,7 @@
+         control_metrics: &AggregateTrafficMetrics,
+         receiver: &mut broadcast::Receiver<ZCPacket>,
+         seq: u32,
++        response_timeout: Duration,
+     ) -> Result<u128, Error> {
+         // should add seq here. so latency can be calculated more accurately
+         let req = Self::new_ping_packet(my_node_id, peer_id, seq);
+@@ -179,7 +192,7 @@
+ 
+         let now = std::time::Instant::now();
+         // wait until we get a pong packet in ctrl_resp_receiver
+-        let resp = timeout(Duration::from_secs(2), async {
++        let resp = timeout(response_timeout, async {
+             loop {
+                 match receiver.recv().await {
+                     Ok(p) => {
+@@ -226,6 +239,8 @@
+         let my_node_id = self.my_peer_id;
+         let peer_id = self.peer_id;
+         let latency_stats = self.latency_stats.clone();
++        let controller_latency_stats = latency_stats.clone();
++        let fast_failover = self.fast_failover;
+ 
+         let (ping_res_sender, mut ping_res_receiver) = tokio::sync::mpsc::channel(100);
+ 
+@@ -236,12 +251,12 @@
+ 
+         let stopped = Arc::new(AtomicU32::new(0));
+ 
+-        // generate a pingpong task every 200ms
++        // Fast probes apply only between authenticated credential clients.
+         let mut pingpong_tasks = JoinSet::new();
+         let ctrl_resp_sender = self.ctrl_sender.clone();
+         let stopped_clone = stopped.clone();
+         let mut controller =
+-            PingIntervalController::new(self.throughput_stats.clone(), loss_counter.clone());
++            PingIntervalController::new(self.throughput_stats.clone(), loss_counter.clone(), fast_failover);
+         self.tasks.spawn(
+             async move {
+                 let mut req_seq = 0;
+@@ -271,6 +286,11 @@
+                     let control_metrics = control_metrics.clone();
+                     let receiver = ctrl_resp_sender.subscribe();
+                     let ping_res_sender = ping_res_sender.clone();
++                    let response_timeout = if fast_failover {
++                        Duration::from_micros(controller_latency_stats.get_latency_us::<u64>().saturating_mul(4).clamp(500_000, 2_000_000))
++                    } else {
++                        Duration::from_secs(2)
++                    };
+                     pingpong_tasks.spawn(async move {
+                         let mut receiver = receiver.resubscribe();
+                         let pingpong_once_ret = Self::do_pingpong_once(
+@@ -280,10 +300,11 @@
+                             &control_metrics,
+                             &mut receiver,
+                             req_seq,
++                            response_timeout,
+                         )
+                         .await;
+ 
+-                        if let Err(e) = ping_res_sender.send(pingpong_once_ret).await {
++                        if let Err(e) = ping_res_sender.send((req_seq, pingpong_once_ret)).await {
+                             tracing::info!(?e, "pingpong task send result error, exit..");
+                         };
+                     });
+@@ -300,8 +321,13 @@
+ 
+         let throughput = self.throughput_stats.clone();
+         let mut last_rx_packets = throughput.rx_packets();
+-
+-        while let Some(ret) = ping_res_receiver.recv().await {
++        let mut health = ProbeHealth::default();
++
++        while let Some((seq, ret)) = ping_res_receiver.recv().await {
++            if fast_failover {
++                let Some(suspect) = health.observe(seq, ret.is_ok()) else { continue; };
++                self.suspect.store(suspect, Ordering::Relaxed);
++            }
+             if let Ok(lat) = ret {
+                 latency_stats.record_latency(lat as u32);
+ 
+@@ -336,7 +362,9 @@
+                 my_node_id
+             );
+ 
+-            if loss_counter.load(Ordering::Relaxed) >= 5 {
++            // Keep a suspect direct connection available for recovery while
++            // its game data already uses the relay. Lifetime cleanup is slower.
++            if loss_counter.load(Ordering::Relaxed) >= if fast_failover { 40 } else { 5 } {
+                 tracing::warn!(
+                     ?ret,
+                     ?self,
+--- a/easytier/src/peers/peer_conn.rs
++++ b/easytier/src/peers/peer_conn.rs
+@@ -6,7 +6,7 @@
+     pin::Pin,
+     sync::{
+         Arc,
+-        atomic::{AtomicU32, Ordering},
++        atomic::{AtomicBool, AtomicU32, Ordering},
+     },
+ };
+ 
+@@ -313,6 +313,7 @@
+     latency_stats: Arc<WindowLatency>,
+     throughput: Arc<Throughput>,
+     loss_rate_stats: Arc<AtomicU32>,
++    suspect: Arc<AtomicBool>,
+ 
+     peer_session_store: Arc<PeerSessionStore>,
+     my_encrypt_algo: String,
+@@ -401,6 +402,7 @@
+             latency_stats: Arc::new(WindowLatency::new(15)),
+             throughput,
+             loss_rate_stats: Arc::new(AtomicU32::new(0)),
++            suspect: Arc::new(AtomicBool::new(false)),
+ 
+             peer_session_store,
+             my_encrypt_algo,
+@@ -1446,6 +1448,11 @@
+             self.loss_rate_stats.clone(),
+             self.throughput.clone(),
+             self.control_metrics(&self.get_conn_info().network_name),
++            self.is_secure_mode_enabled()
++                && self.global_ctx.get_network_identity().network_secret.is_none()
++                && self.global_ctx.flags_arc().disable_relay_data
++                && self.get_peer_identity_type() == PeerIdentityType::Credential,
++            self.suspect.clone(),
+         );
+ 
+         let close_event_notifier = self.close_event_notifier.clone();
+@@ -1463,6 +1470,10 @@
+ 
+     pub async fn send_msg(&self, msg: ZCPacket) -> Result<(), Error> {
+         Ok(self.sink.send(msg).await?)
++    }
++
++    pub(crate) fn is_data_healthy(&self) -> bool {
++        !self.is_closed() && !self.suspect.load(Ordering::Relaxed)
+     }
+ 
+     pub fn get_peer_id(&self) -> PeerId {
+--- a/easytier/src/peers/peer.rs
++++ b/easytier/src/peers/peer.rs
+@@ -189,18 +189,23 @@
+     async fn select_conn(&self) -> Option<ArcPeerConn> {
+         let default_conn_id = self.default_conn_id.load();
+         if let Some(conn) = self.conns.get(&default_conn_id) {
+-            return Some(conn.clone());
++            if conn.is_data_healthy() {
++                return Some(conn.clone());
++            }
+         }
+ 
+         // find a conn with the smallest latency
+         let mut min_latency = u64::MAX;
+         for conn in self.conns.iter() {
++            if !conn.is_data_healthy() { continue; }
+             let latency = conn.value().get_stats().latency_us;
+             if latency < min_latency {
+                 min_latency = latency;
+                 self.default_conn_id.store(conn.get_conn_id());
+             }
+         }
++
++        if min_latency == u64::MAX { return None; }
+ 
+         self.conns
+             .get(&self.default_conn_id.load())
+@@ -247,6 +252,14 @@
+ 
+     pub fn has_live_conns(&self) -> bool {
+         self.conns.iter().any(|entry| !entry.value().is_closed())
++    }
++
++    pub(crate) fn is_data_healthy(&self) -> bool {
++        let id = self.default_conn_id.load();
++        if self.conns.get(&id).is_some_and(|conn| conn.is_data_healthy()) {
++            return true;
++        }
++        self.conns.iter().any(|conn| conn.is_data_healthy())
+     }
+ 
+     pub fn has_directly_connected_conn(&self) -> bool {
+--- a/easytier/src/peers/peer_map.rs
++++ b/easytier/src/peers/peer_map.rs
+@@ -4,6 +4,7 @@
+ };
+ 
+ use anyhow::Context;
++use crossbeam::atomic::AtomicCell;
+ use dashmap::{DashMap, DashSet};
+ use parking_lot::Mutex;
+ use tokio::sync::RwLock;
+@@ -36,11 +37,18 @@
+     packet_send: PacketRecvChan,
+     routes: RwLock<Vec<ArcRoute>>,
+     alive_client_urls: Arc<Mutex<multimap::MultiMap<url::Url, PeerConnId>>>,
++    fast_failover: bool,
++    relay_peer: AtomicCell<Option<PeerId>>,
+ }
+ 
+ impl PeerMap {
+     pub fn new(packet_send: PacketRecvChan, global_ctx: ArcGlobalCtx, my_peer_id: PeerId) -> Self {
++        let fast_failover = global_ctx.config.get_secure_mode().is_some_and(|cfg| cfg.enabled)
++            && global_ctx.get_network_identity().network_secret.is_none()
++            && global_ctx.flags_arc().disable_relay_data;
+         PeerMap {
++            fast_failover,
++            relay_peer: AtomicCell::new(None),
+             global_ctx,
+             my_peer_id,
+             peer_map: DashMap::new(),
+@@ -132,6 +140,23 @@
+         peer_id == self.my_peer_id || self.peer_map.contains_key(&peer_id)
+     }
+ 
++    pub(crate) fn has_data_peer(&self, peer_id: PeerId) -> bool {
++        peer_id == self.my_peer_id || self.get_peer_by_id(peer_id).is_some_and(|p| p.is_data_healthy())
++    }
++
++    fn relay_for_peer(&self, dst: PeerId) -> Option<PeerId> {
++        if !self.fast_failover || dst == self.my_peer_id { return None; }
++        let usable = |p: &Peer| p.peer_node_id != dst
++            && p.get_peer_identity_type() == Some(PeerIdentityType::Admin)
++            && p.is_data_healthy();
++        if let Some(id) = self.relay_peer.load() {
++            if self.get_peer_by_id(id).is_some_and(|p| usable(&p)) { return Some(id); }
++        }
++        let found = self.peer_map.iter().find_map(|p| usable(p.value()).then_some(*p.key()));
++        self.relay_peer.store(found);
++        found
++    }
++
+     pub async fn send_msg_directly(&self, msg: ZCPacket, dst_peer_id: PeerId) -> Result<(), Error> {
+         if dst_peer_id == self.my_peer_id {
+             let packet_send = self.packet_send.clone();
+@@ -172,8 +197,12 @@
+             return Some(dst_peer_id);
+         }
+ 
+-        if self.has_peer(dst_peer_id) && matches!(policy, NextHopPolicy::LeastHop) {
++        if self.has_data_peer(dst_peer_id) && matches!(policy, NextHopPolicy::LeastHop) {
+             return Some(dst_peer_id);
++        }
++
++        if !self.has_data_peer(dst_peer_id) {
++            if let Some(relay) = self.relay_for_peer(dst_peer_id) { return Some(relay); }
+         }
+ 
+         // get route info
+@@ -369,7 +398,18 @@
+ 
+     pub async fn list_route_infos(&self) -> Vec<instance::Route> {
+         if let Some(route) = self.routes.read().await.iter().next() {
+-            return route.list_routes().await;
++            let mut rows = route.list_routes().await;
++            for row in &mut rows {
++                if !self.has_data_peer(row.peer_id) {
++                    if let Some(relay) = self.relay_for_peer(row.peer_id) {
++                        row.next_hop_peer_id = relay;
++                        row.cost = 2;
++                        row.next_hop_peer_id_latency_first = Some(relay);
++                        row.cost_latency_first = Some(2);
++                    }
++                }
++            }
++            return rows;
+         }
+         vec![]
+     }
+--- a/easytier/src/peers/peer_manager.rs
++++ b/easytier/src/peers/peer_manager.rs
+@@ -1351,7 +1351,7 @@
+     }
+ 
+     pub async fn list_routes(&self) -> Vec<instance::Route> {
+-        self.get_route().list_routes().await
++        self.peers.list_route_infos().await
+     }
+ 
+     pub async fn get_route_peer_info_last_update_time(&self) -> Instant {
+@@ -1508,7 +1508,7 @@
+             Self::get_next_hop_policy(msg.peer_manager_header().unwrap().is_latency_first());
+         let packet_type = msg.peer_manager_header().unwrap().packet_type;
+         let msg_len = msg.buf_len() as u64;
+-        let send_result = if peers.has_peer(dst_peer_id) {
++        let send_result = if peers.has_data_peer(dst_peer_id) {
+             peers.send_msg_directly(msg, dst_peer_id).await
+         } else if foreign_network_client.has_next_hop(dst_peer_id) {
+             foreign_network_client.send_msg(msg, dst_peer_id).await
+--- a/easytier/src/common/network.rs
++++ b/easytier/src/common/network.rs
+@@ -298,19 +298,10 @@
+                 .map(Self::convert_windows_interface)
+                 .collect(),
+             Err(e) => {
+-                tracing::warn!(
+-                    ?e,
+-                    "failed to enumerate interfaces via network-interface, falling back to pnet"
+-                );
+-                match std::panic::catch_unwind(pnet::datalink::interfaces) {
+-                    Ok(ifaces) => ifaces,
+-                    Err(_) => {
+-                        tracing::error!(
+-                            "failed to enumerate interfaces via both network-interface and pnet"
+-                        );
+-                        Vec::new()
+-                    }
+-                }
++                // Keep the Windows client independent of Npcap. The normal path
++                // enumerates interfaces through the Windows IP Helper API.
++                tracing::error!(?e, "failed to enumerate Windows network interfaces");
++                Vec::new()
+             }
+         }
+     }

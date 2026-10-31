@@ -1,0 +1,110 @@
+{
+  "version": "2.6.4-civ6.2",
+  "packaging_variant": "3.2.5-no-npcap",
+  "features": [
+    "tun",
+    "aes-gcm",
+    "zstd"
+  ],
+  "source_and_patch_sha256": "81197769ec286605ad3f9a28f75dfcd5a2131b4da1eecc5245b4be269920c520",
+  "source_archive": {
+    "file": "EasyTier-2.6.4-source.tar.gz",
+    "upstream_commit": "8428a89d2dabc94c97d370ec607c6ca142473626",
+    "original_sha256": "e4a4536a439aea568e8f6e4f28b25f5e0993b212f98c6abcdbd1f17caa8298ca",
+    "sha256": "a1215ca0c52a9698f16b4fbe851f77546afcab9a52c1173fa963b02082a7e28c",
+    "omitted_artifacts": [
+      {
+        "path": "EasyTier-2.6.4/easytier/third_party/arm64/Packet.dll",
+        "sha256": "fe56bf638c1f05751a4f36377d71f48fb7f43446e92475eda32dc0f4f2ebd60c"
+      },
+      {
+        "path": "EasyTier-2.6.4/easytier/third_party/arm64/Packet.lib",
+        "sha256": "0cf77885db5cbd8152dd23744843bf39220372c4e961a5df79875ccf54316387"
+      },
+      {
+        "path": "EasyTier-2.6.4/easytier/third_party/i686/Packet.dll",
+        "sha256": "f0ab4f5457bd48958b72d6849148e1ece6dbc1059435dfe695051fc32b8cdc19"
+      },
+      {
+        "path": "EasyTier-2.6.4/easytier/third_party/i686/Packet.lib",
+        "sha256": "ca4864813a4b2d4c21b6e4b33bcdcab55e307558528f71b3d4637e8a605375c6"
+      },
+      {
+        "path": "EasyTier-2.6.4/easytier/third_party/x86_64/Packet.dll",
+        "sha256": "c7c03a87eac7243ccbe331554624b18803010b740e311fc8cfddb573096eacac"
+      },
+      {
+        "path": "EasyTier-2.6.4/easytier/third_party/x86_64/Packet.lib",
+        "sha256": "5be8eb0ef57344cedc940fd81edbf7fc98680ba0c8337b577e7fdc448408130b"
+      }
+    ]
+  },
+  "patch": {
+    "file": "EasyTier-fast-failover.patch",
+    "sha256": "bb6073b1eb2e7bcbdd3e9425e16fcf9f6d04c4f28b8f51d63fb72347cb1862c9"
+  },
+  "windows_runtime_dependencies": [
+    "Windows 10/11 system libraries",
+    "wintun.dll",
+    "WinDivert64.sys"
+  ],
+  "windows_interface_enumeration": "network-interface 2.0 (Windows IP Helper); logged empty result on enumeration failure; no pnet fallback",
+  "optional_features_excluded": [
+    "faketcp"
+  ],
+  "wintun": {
+    "version": "0.14.1",
+    "source": "https://www.wintun.net/builds/wintun-0.14.1.zip",
+    "archive_sha256": "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51",
+    "license": "Wintun-LICENSE.txt (official prebuilt binaries license)"
+  },
+  "build_only_import_library": {
+    "source": "https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip",
+    "archive_sha256": "ea799cf2f26e4afb1892938070fd2b1ca37ce5cf75fec4349247df12b784edbd",
+    "entry": "WpdPack/Lib/x64/Packet.lib",
+    "sha256": "5be8eb0ef57344cedc940fd81edbf7fc98680ba0c8337b577e7fdc448408130b",
+    "license": "WinPcap-SDK-LICENSE.txt",
+    "redistributed": false
+  },
+  "windows_binaries": {
+    "easytier-core.exe": {
+      "sha256": "02d5e9a55052d5b7bc5898d89a8f406ad5e96d7c7c252583ecee57aff81823a0",
+      "imports": [
+        "bcryptprimitives.dll",
+        "KERNEL32.dll",
+        "ole32.dll",
+        "oleaut32.dll",
+        "ntdll.dll",
+        "ws2_32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "iphlpapi.dll",
+        "rpcrt4.dll",
+        "bcrypt.dll",
+        "crypt32.dll",
+        "advapi32.dll",
+        "wintrust.dll"
+      ]
+    },
+    "easytier-cli.exe": {
+      "sha256": "b046851e2c30f79c264fba32a3bbbc176bb7ddc33eee82022fe9d87f0c6c3b4b",
+      "imports": [
+        "bcryptprimitives.dll",
+        "combase.dll",
+        "KERNEL32.dll",
+        "shell32.dll",
+        "ntdll.dll",
+        "ws2_32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "iphlpapi.dll",
+        "bcrypt.dll",
+        "advapi32.dll"
+      ]
+    }
+  },
+  "validation": {
+    "windows_release_build": "passed; scripts/build-mesh-fork.py --platform windows --skip-image",
+    "packet_runtime_imports": "none in both PE import tables",
+    "retained_source_bytes": "identical to original upstream archive",
+    "native_version": "2.6.4-civ6.2 unchanged"
+  }
+}
