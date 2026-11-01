@@ -667,7 +667,7 @@ function Test-Relay {
     catch { throw '无法读取客户端配置，请检查设置或重新解压客户端。' }
     try { $snapshot = Get-MeshSnapshot }
     catch { $snapshot = [pscustomobject]@{Text='玩家连接状态：读取失败。';Peers=@()} }
-    $lines = @(('版本：3.4.2；时间：' + [DateTimeOffset]::Now.ToString('o')), $snapshot.Text,
+    $lines = @(('版本：3.4.3；时间：' + [DateTimeOffset]::Now.ToString('o')), $snapshot.Text,
         ('游戏虚拟网段：' + $profile.network))
     foreach ($peer in $snapshot.Peers) {
         $lines += $peer.Player + ' | ' + $peer.VirtualIP + ' | ' + $peer.Channel + ' | ' + $peer.RTT
