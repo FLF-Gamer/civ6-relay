@@ -19,7 +19,7 @@ Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName UIAutomationProvider
 Add-Type -AssemblyName UIAutomationTypes
 # RenderTargetBitmap remains an actual WPF render on headless Windows runners.
-[Windows.Interop.RenderOptions]::ProcessRenderMode=[Windows.Interop.RenderMode]::SoftwareOnly
+[Windows.Media.RenderOptions]::ProcessRenderMode=[Windows.Interop.RenderMode]::SoftwareOnly
 $repoRoot = Split-Path $PSScriptRoot -Parent
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repoRoot '.build/windows-ui-smoke'
