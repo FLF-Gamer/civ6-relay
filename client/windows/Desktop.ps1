@@ -28,8 +28,7 @@
     }
     $c.PlayerList.ItemsSource = $ui.Rows
     $brush = @{}
-    foreach ($color in @('#B8BCBA','#12A594','#AD5700','#5F6563','#008573','#F3FBF9','#83CDC1',
-        '#0D3D38','#FFF0F0','#CE2C31')) {
+    foreach ($color in @('#BBBBBB','#838383','#646464','#202020','#F0F0F0','#E8E8E8','#333333')) {
         $brush[$color] = [Windows.Media.BrushConverter]::new().ConvertFromString($color)
     }
     $preferences = Get-ClientPreferences
@@ -59,9 +58,9 @@
         param([string]$Text, [bool]$Failed=$false)
         $c.OperationText.Text = $Text
         $c.OperationPanel.Visibility = [Windows.Visibility]::Visible
-        $c.OperationPanel.Background = if ($Failed) { $brush['#FFF0F0'] } else { $brush['#F3FBF9'] }
-        $c.OperationPanel.BorderBrush = if ($Failed) { $brush['#CE2C31'] } else { $brush['#83CDC1'] }
-        $c.OperationText.Foreground = if ($Failed) { $brush['#CE2C31'] } else { $brush['#0D3D38'] }
+        $c.OperationPanel.Background = if ($Failed) { $brush['#F0F0F0'] } else { $brush['#F0F0F0'] }
+        $c.OperationPanel.BorderBrush = if ($Failed) { $brush['#E8E8E8'] } else { $brush['#E8E8E8'] }
+        $c.OperationText.Foreground = if ($Failed) { $brush['#333333'] } else { $brush['#333333'] }
     }
     $setControls = {
         $canEdit = !$ui.Busy -and !$ui.Connected
@@ -81,15 +80,15 @@
             $ui.Connected = $text -ne '未连接' -and $text -ne '实时监测尚未启动'
             $c.DisconnectButton.Visibility = if ($ui.Connected) { [Windows.Visibility]::Visible } else { [Windows.Visibility]::Collapsed }
             if ($text.StartsWith('已接入服务器')) {
-                $c.ConnectionLabel.Text = '已连接'; $c.ConnectionDot.Fill = $brush['#12A594']
-                $c.ConnectionLabel.Foreground = $brush['#008573']
+                $c.ConnectionLabel.Text = '已连接'; $c.ConnectionDot.Fill = $brush['#838383']
+                $c.ConnectionLabel.Foreground = $brush['#202020']
             } elseif ($ui.Connected) {
                 $c.ConnectionLabel.Text = if ($text -match '失败|无法|异常') { '状态异常' } else { '连接中' }
-                $c.ConnectionDot.Fill = if ($text -match '失败|无法|异常') { $brush['#CE2C31'] } else { $brush['#AD5700'] }
+                $c.ConnectionDot.Fill = if ($text -match '失败|无法|异常') { $brush['#333333'] } else { $brush['#646464'] }
                 $c.ConnectionLabel.Foreground = $c.ConnectionDot.Fill
             } else {
-                $c.ConnectionLabel.Text = '尚未连接'; $c.ConnectionDot.Fill = $brush['#B8BCBA']
-                $c.ConnectionLabel.Foreground = $brush['#5F6563']
+                $c.ConnectionLabel.Text = '尚未连接'; $c.ConnectionDot.Fill = $brush['#BBBBBB']
+                $c.ConnectionLabel.Foreground = $brush['#646464']
             }
             $seen = @{}
             foreach ($peer in @($snapshot.Peers)) {
