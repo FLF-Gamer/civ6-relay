@@ -926,18 +926,18 @@ namespace Civ6Relay.Ui {
     $layout.Padding=New-Object Windows.Forms.Padding(22,18,22,14)
     $layout.Margin=New-Object Windows.Forms.Padding(0)
     $layout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
-    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,72))) | Out-Null
+    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,148))) | Out-Null
     $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $canvas.Controls.Add($layout)
 
     $header=New-Object Windows.Forms.TableLayoutPanel
-    $header.Dock='Top';$header.AutoSize=$true;$header.AutoSizeMode='GrowAndShrink';$header.ColumnCount=1;$header.RowCount=2
+    $header.Dock='Fill';$header.AutoSize=$false;$header.Height=60;$header.ColumnCount=1;$header.RowCount=2
     $header.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
     $header.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
-    $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,38))) | Out-Null
+    $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $title=New-Object Windows.Forms.Label
     $title.Text='文明6联机助手';$title.Font=$fontTitle;$title.AutoSize=$true;$title.Dock='Fill'
     $title.Margin=New-Object Windows.Forms.Padding(0,0,0,4)
@@ -950,25 +950,24 @@ namespace Civ6Relay.Ui {
     $layout.Controls.Add($header,0,0)
 
     $connectionCard=New-Object Windows.Forms.TableLayoutPanel
-    $connectionCard.Dock='Top';$connectionCard.AutoSize=$true;$connectionCard.AutoSizeMode='GrowAndShrink'
+    $connectionCard.Dock='Fill';$connectionCard.AutoSize=$false;$connectionCard.Height=136
     $connectionCard.BackColor=$palette.White;$connectionCard.Padding=New-Object Windows.Forms.Padding(18,16,18,12)
     $connectionCard.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
     $connectionCard.ColumnCount=1;$connectionCard.RowCount=2
     $connectionCard.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
-    $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,64))) | Out-Null
+    $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,44))) | Out-Null
     $layout.Controls.Add($connectionCard,0,1)
     $preferences=Get-ClientPreferences
     $fields=New-Object Windows.Forms.TableLayoutPanel
-    $fields.Dock='Top';$fields.AutoSize=$true;$fields.AutoSizeMode='GrowAndShrink'
+    $fields.Dock='Fill';$fields.AutoSize=$false;$fields.Height=54
     $fields.ColumnCount=3;$fields.RowCount=2;$fields.GrowStyle='FixedSize'
-    $fields.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
+    $fields.Margin=New-Object Windows.Forms.Padding(0,0,0,10)
     foreach ($weight in @(36,46,18)) {
         $fields.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,$weight))) | Out-Null
     }
-    for ($row=0;$row -lt 2;$row++) {
-        $fields.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    }
+    $fields.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,24))) | Out-Null
+    $fields.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     foreach ($item in @(@('玩家昵称',0),@('服务器 IP',1),@('端口',2))) {
         $label=New-Object Windows.Forms.Label
         $label.Text=$item[0];$label.AutoSize=$true;$label.Dock='Fill'
@@ -994,14 +993,14 @@ namespace Civ6Relay.Ui {
     $tips.SetToolTip($serverInput,'填写服务器的 IPv4 地址。')
     $connectionCard.Controls.Add($fields,0,0)
     $actionLayout=New-Object Windows.Forms.TableLayoutPanel
-    $actionLayout.Dock='Top';$actionLayout.AutoSize=$true;$actionLayout.AutoSizeMode='GrowAndShrink';$actionLayout.ColumnCount=2;$actionLayout.RowCount=1
+    $actionLayout.Dock='Fill';$actionLayout.AutoSize=$false;$actionLayout.Height=44;$actionLayout.ColumnCount=2;$actionLayout.RowCount=1
     $actionLayout.Margin=New-Object Windows.Forms.Padding(0)
-    $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Absolute,138))) | Out-Null
     $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
-    $actionLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $actionLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $connectionCard.Controls.Add($actionLayout,0,1)
     $actions=New-Object Windows.Forms.FlowLayoutPanel
-    $actions.Dock='Top';$actions.AutoSize=$true;$actions.AutoSizeMode='GrowAndShrink';$actions.WrapContents=$true
+    $actions.Dock='Fill';$actions.AutoSize=$false;$actions.Height=44;$actions.WrapContents=$false
     $actions.FlowDirection='LeftToRight';$actions.Margin=New-Object Windows.Forms.Padding(12,0,0,0)
     $actionLayout.Controls.Add($actions,1,0)
 
