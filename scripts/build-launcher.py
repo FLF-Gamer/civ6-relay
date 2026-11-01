@@ -22,7 +22,7 @@ TARGET = 'x86_64-pc-windows-msvc'
 
 def icon_bytes():
     """Render our original icon.svg geometry into deterministic 32-bit ICO DIBs."""
-    navy, teal, white = (20, 51, 79), (83, 213, 188), (234, 249, 255)
+    navy, gold, ivory = (20, 51, 79), (213, 179, 106), (241, 230, 206)
     nodes = ((76, 76), (184, 106), (108, 184))
 
     def pixel(x, y):
@@ -34,11 +34,11 @@ def icon_bytes():
             bx, by = nodes[(i + 1) % 3]
             t = max(0, min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)))
             if (x - ax - t * (bx - ax)) ** 2 + (y - ay - t * (by - ay)) ** 2 <= 7 ** 2:
-                color = teal
+                color = gold
         for nx, ny in nodes:
             distance = (x - nx) ** 2 + (y - ny) ** 2
             if distance <= 25 ** 2:
-                color = navy if distance <= 10 ** 2 else white
+                color = navy if distance <= 10 ** 2 else ivory
         return color
 
     images = []
