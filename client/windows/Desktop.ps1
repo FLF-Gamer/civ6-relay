@@ -78,9 +78,10 @@
             $text = [string]$snapshot.Text
             $c.StatusText.Text = $text
             $ui.Connected = $text -ne '未连接' -and $text -ne '实时监测尚未启动'
+            $c.ConnectButton.Visibility = if ($ui.Connected) { [Windows.Visibility]::Collapsed } else { [Windows.Visibility]::Visible }
             $c.DisconnectButton.Visibility = if ($ui.Connected) { [Windows.Visibility]::Visible } else { [Windows.Visibility]::Collapsed }
             if ($text.StartsWith('已接入服务器')) {
-                $c.ConnectionLabel.Text = '已连接'; $c.ConnectionDot.Fill = $brush['#838383']
+                $c.ConnectionLabel.Text = '已连接'; $c.ConnectionDot.Fill = $brush['#202020']
                 $c.ConnectionLabel.Foreground = $brush['#202020']
             } elseif ($ui.Connected) {
                 $c.ConnectionLabel.Text = if ($text -match '失败|无法|异常') { '状态异常' } else { '连接中' }

@@ -9,7 +9,7 @@ import shutil
 import tarfile
 import zipfile
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='3.4.3-preview'
+VERSION='3.4.4-preview'
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
