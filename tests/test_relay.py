@@ -132,7 +132,7 @@ class PackageTests(unittest.TestCase):
             (folder/'checksums.json').write_text(json.dumps(hashes))
         for name in ('relayctl.py','install.sh','README.md','client/windows/Start.cmd',
                 'client/windows/Civ6Relay.ps1','client/windows/LiveMonitor.cs','client/windows/README.txt',
-                'client/launcher/Program.cs',
+                'client/launcher/src/main.rs',
                 'vendor/easytier/licenses/LICENSE.txt','vendor/linux-amd64/licenses/LICENSE.txt',
                 'vendor/sources/wireguard-tools.tar.xz','build/source.txt','scripts/source.py',
                 'tests/source.py','docs/guide.md'):
@@ -171,7 +171,7 @@ class PackageTests(unittest.TestCase):
             self.assertNotIn(self.marker.encode(),b''.join(archive.read(name) for name in archive.namelist()))
         with tarfile.open(server) as archive:
             self.assertIn('civ6-relay/client/windows/LiveMonitor.cs',archive.getnames())
-            self.assertIn('civ6-relay/client/launcher/Program.cs',archive.getnames())
+            self.assertIn('civ6-relay/client/launcher/src/main.rs',archive.getnames())
             self.assertEqual(archive.extractfile('civ6-relay/client/windows/Civ6Relay.exe').read(),self.launcher)
             for name in archive.getnames():
                 self.assertFalse(any(part in ('.git','.build','profile.json','state.json','preferences.json') for part in Path(name).parts))

@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot '../.build/windows-ui-smoke')
+    [string]$OutputDirectory = ''
 )
 # Run in Windows PowerShell 5.1 with -STA. All network and machine-state actions
 # below are fixtures. PNG files render the production WinForms UI with test data.
@@ -16,7 +16,11 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [Windows.Forms.Application]::SetUnhandledExceptionMode([Windows.Forms.UnhandledExceptionMode]::ThrowException)
 $repoRoot = Split-Path $PSScriptRoot -Parent
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    $OutputDirectory = Join-Path $repoRoot '.build/windows-ui-smoke'
+}
 . (Join-Path $repoRoot 'client/windows/Civ6Relay.ps1') -LibraryOnly
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repoRoot '.build/windows-ui-smoke' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 $script:UiSmoke = @{

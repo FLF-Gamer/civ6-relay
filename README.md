@@ -96,3 +96,25 @@ sudo civ6-relay uninstall
 卸载会停止服务，删除服务器接入信息和导出的客户端包，并移除本工具新增的防火墙端口；原有规则及程序目录保留。
 
 第三方组件源码、补丁和许可证见 Release 安装包内的 `vendor/easytier/licenses` 与 `vendor/linux-amd64/licenses`。
+
+## 源码构建
+
+完整构建需要 Python 3、Docker（命令在 PATH 中）和下载构建依赖的网络。依次准备组件、构建启动器，再生成公开发布包：
+
+```bash
+python3 scripts/build-deps.py
+python3 scripts/build-mesh-fork.py
+python3 scripts/build-launcher.py --verify-reproducible
+python3 scripts/package.py --output-dir .build/release-public
+```
+
+启动器默认复用组网组件构建生成的 `civ6-mesh-build:local` 镜像和 Windows SDK 缓存，离线构建。生成的 `client/windows/Civ6Relay.exe` 不提交到 Git，由打包脚本加入发布包。
+
+也可在 Windows x64 上单独构建启动器：安装 Python 3、Rust 1.95.0（MSVC 工具链）以及 Visual Studio Build Tools 的“使用 C++ 的桌面开发”（含 MSVC 和 Windows SDK），执行：
+
+```powershell
+$env:RUSTUP_TOOLCHAIN = '1.95.0'
+python scripts/build-launcher.py --native --verify-reproducible
+```
+
+`--native` 使用本机编译器和 SDK，不使用 Docker。完整发布包仍需前述 Linux、Windows 组网组件；公开打包时不要传入私有 `--profile`。
