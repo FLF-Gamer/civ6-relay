@@ -1,6 +1,6 @@
 [package]
 name = "civ6-relay-launcher"
-version = "3.4.1-preview"
+version = "3.4.2-preview"
 edition = "2021"
 publish = false
 

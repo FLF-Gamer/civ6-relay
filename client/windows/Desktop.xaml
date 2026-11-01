@@ -173,10 +173,10 @@
           <Grid.RowDefinitions><RowDefinition Height="150"/><RowDefinition Height="*"/><RowDefinition Height="90"/></Grid.RowDefinitions>
           <StackPanel Margin="27,30,0,0">
             <Canvas Width="38" Height="34" HorizontalAlignment="Left" Margin="0,0,0,14">
-              <Path Data="M 8,24 L 19,6 L 32,24 Z" Stroke="#BBBBBB" StrokeThickness="2"/>
-              <Ellipse Canvas.Left="2" Canvas.Top="18" Width="12" Height="12" Fill="#BBBBBB"/>
-              <Ellipse Canvas.Left="13" Width="12" Height="12" Fill="#838383"/>
-              <Ellipse Canvas.Left="26" Canvas.Top="18" Width="12" Height="12" Fill="#202020"/>
+              <Path Data="M 8,24 L 19,6 L 32,24 Z" Stroke="#83CDC1" StrokeThickness="2"/>
+              <Ellipse Canvas.Left="2" Canvas.Top="18" Width="12" Height="12" Fill="#83CDC1"/>
+              <Ellipse Canvas.Left="13" Width="12" Height="12" Fill="#12A594"/>
+              <Ellipse Canvas.Left="26" Canvas.Top="18" Width="12" Height="12" Fill="#008573"/>
             </Canvas>
             <TextBlock Text="文明6 联机" Foreground="#202020" FontSize="17" FontWeight="SemiBold"/>
           </StackPanel>
