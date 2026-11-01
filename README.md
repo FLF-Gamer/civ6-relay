@@ -95,7 +95,7 @@ sudo civ6-relay uninstall
 
 卸载会停止服务，删除服务器接入信息和导出的客户端包，并移除本工具新增的防火墙端口；原有规则及程序目录保留。
 
-第三方组件源码、补丁和许可证见 Release 安装包内的 `vendor/easytier/licenses` 与 `vendor/linux-amd64/licenses`。
+第三方组件源码、补丁和许可证见 Release 安装包内的 `vendor/easytier/licenses` 、`vendor/linux-amd64/licenses` 与 `client/windows/licenses`。
 
 ## 源码构建
 

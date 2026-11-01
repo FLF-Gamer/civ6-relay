@@ -71,6 +71,7 @@ for name in easytier-core.exe easytier-cli.exe wintun.dll WinDivert64.sys checks
   cp "$source_dir/vendor/easytier/windows-x86_64/$name" "$target_dir/client/windows/bin/$name"
 done
 cp -R "$source_dir/vendor/easytier/licenses/." "$target_dir/client/windows/licenses/"
+cp -R "$source_dir/client/windows/licenses/." "$target_dir/client/windows/licenses/"
 cp -R "$source_dir/vendor/linux-amd64/licenses" "$target_dir/"
 python3 - "$target_dir" <<'PY'
 from pathlib import Path

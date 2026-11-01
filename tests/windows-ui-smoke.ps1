@@ -20,7 +20,6 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $repoRoot '.build/windows-ui-smoke'
 }
 . (Join-Path $repoRoot 'client/windows/Civ6Relay.ps1') -LibraryOnly
-if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repoRoot '.build/windows-ui-smoke' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 $script:UiSmoke = @{
@@ -151,6 +150,11 @@ function Assert-UiSmokeLayout {
         Assert-UiSmoke ($button.Visible -and $button.Enabled -and $button.CanSelect) ('Action is inaccessible: '+$caption)
         Assert-UiSmoke ($button.Width -ge 64 -and $button.Height -ge 28) ('Action is too small: '+$caption)
     }
+    foreach ($grid in @($controls | Where-Object { $_ -is [Windows.Forms.DataGridView] -and $_.Visible -and $_.Rows.Count -gt 0 })) {
+        $requiredHeight=$grid.ColumnHeadersHeight+2
+        for ($rowIndex=0;$rowIndex -lt [Math]::Min(2,$grid.Rows.Count);$rowIndex++) { $requiredHeight+=$grid.Rows[$rowIndex].Height }
+        Assert-UiSmoke ($grid.Height -ge $requiredHeight) ('Player grid cannot show two full rows: '+$grid.Height+' < '+$requiredHeight+' px.')
+    }
     $tabs = Get-UiSmokeTabs $Form
     if ($tabs.SelectedTab.Text -eq '运行日志') {
         foreach ($caption in @('复制日志','导出日志','清空显示')) {
@@ -180,6 +184,7 @@ function Stop-UiSmokeFailure {
     $script:UiSmokeTimer.Stop()
     $form = $script:UiSmoke.Form
     if ($null -ne $form -and -not $form.IsDisposed) {
+        try { Save-UiSmokeScreenshot $form 'ui-failure' } catch { }
         $script:Busy = $false
         foreach ($control in @(Get-UiSmokeControls $form)) {
             if ($control -is [Windows.Forms.CheckBox] -and $control.Text -eq '关闭窗口时自动断开') { $control.Checked=$false }
@@ -219,7 +224,7 @@ $script:UiSmokeTimer.Add_Tick({
                 Assert-UiSmokeLayout $form
                 $grids = @(Get-UiSmokeControls $form | Where-Object { $_ -is [Windows.Forms.DataGridView] })
                 Assert-UiSmoke ($grids.Count -eq 1 -and $grids[0].Rows.Count -eq 2) 'Expected two fixture players in production grid.'
-                Assert-UiSmoke ($grids[0].Height -ge 70) 'Player grid is clipped.'
+                Assert-UiSmoke ($grids[0].Height -ge 70) ('Player grid is clipped: '+$grids[0].Height+' px.')
                 Save-UiSmokeScreenshot $form 'network-connected-fixture'
                 $tabs.SelectedTab = Get-UiSmokePage $tabs '运行日志'
             }

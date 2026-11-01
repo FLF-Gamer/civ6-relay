@@ -933,8 +933,8 @@ namespace Civ6Relay.Ui {
     $canvas.Controls.Add($layout)
 
     $header=New-Object Windows.Forms.TableLayoutPanel
-    $header.Dock='Fill';$header.AutoSize=$true;$header.ColumnCount=1;$header.RowCount=2
-    $header.Margin=New-Object Windows.Forms.Padding(0,0,0,16)
+    $header.Dock='Top';$header.AutoSize=$true;$header.AutoSizeMode='GrowAndShrink';$header.ColumnCount=1;$header.RowCount=2
+    $header.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
     $header.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
@@ -950,9 +950,9 @@ namespace Civ6Relay.Ui {
     $layout.Controls.Add($header,0,0)
 
     $connectionCard=New-Object Windows.Forms.TableLayoutPanel
-    $connectionCard.Dock='Fill';$connectionCard.AutoSize=$true;$connectionCard.AutoSizeMode='GrowAndShrink'
+    $connectionCard.Dock='Top';$connectionCard.AutoSize=$true;$connectionCard.AutoSizeMode='GrowAndShrink'
     $connectionCard.BackColor=$palette.White;$connectionCard.Padding=New-Object Windows.Forms.Padding(18,16,18,12)
-    $connectionCard.Margin=New-Object Windows.Forms.Padding(0,0,0,16)
+    $connectionCard.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
     $connectionCard.ColumnCount=1;$connectionCard.RowCount=2
     $connectionCard.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
@@ -960,7 +960,7 @@ namespace Civ6Relay.Ui {
     $layout.Controls.Add($connectionCard,0,1)
     $preferences=Get-ClientPreferences
     $fields=New-Object Windows.Forms.TableLayoutPanel
-    $fields.Dock='Fill';$fields.AutoSize=$true;$fields.AutoSizeMode='GrowAndShrink'
+    $fields.Dock='Top';$fields.AutoSize=$true;$fields.AutoSizeMode='GrowAndShrink'
     $fields.ColumnCount=3;$fields.RowCount=2;$fields.GrowStyle='FixedSize'
     $fields.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
     foreach ($weight in @(36,46,18)) {
@@ -994,14 +994,14 @@ namespace Civ6Relay.Ui {
     $tips.SetToolTip($serverInput,'填写服务器的 IPv4 地址。')
     $connectionCard.Controls.Add($fields,0,0)
     $actionLayout=New-Object Windows.Forms.TableLayoutPanel
-    $actionLayout.Dock='Fill';$actionLayout.AutoSize=$true;$actionLayout.ColumnCount=2;$actionLayout.RowCount=1
+    $actionLayout.Dock='Top';$actionLayout.AutoSize=$true;$actionLayout.AutoSizeMode='GrowAndShrink';$actionLayout.ColumnCount=2;$actionLayout.RowCount=1
     $actionLayout.Margin=New-Object Windows.Forms.Padding(0)
     $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $actionLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $connectionCard.Controls.Add($actionLayout,0,1)
     $actions=New-Object Windows.Forms.FlowLayoutPanel
-    $actions.Dock='Fill';$actions.AutoSize=$true;$actions.AutoSizeMode='GrowAndShrink';$actions.WrapContents=$true
+    $actions.Dock='Top';$actions.AutoSize=$true;$actions.AutoSizeMode='GrowAndShrink';$actions.WrapContents=$true
     $actions.FlowDirection='LeftToRight';$actions.Margin=New-Object Windows.Forms.Padding(12,0,0,0)
     $actionLayout.Controls.Add($actions,1,0)
 
@@ -1338,7 +1338,7 @@ namespace Civ6Relay.Ui {
     $fitContent={
         if (!$form.IsHandleCreated) { return }
         $graphics=$form.CreateGraphics()
-        try { $minimumContentHeight=[int][Math]::Ceiling(620*$graphics.DpiY/96) }
+        try { $minimumContentHeight=[int][Math]::Ceiling(700*$graphics.DpiY/96) }
         finally { $graphics.Dispose() }
         $canvas.AutoScrollMinSize=New-Object Drawing.Size(0,$minimumContentHeight)
         $contentHeight=[Math]::Max($canvas.ClientSize.Height,$minimumContentHeight)

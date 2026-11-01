@@ -1,0 +1,27 @@
+Rust standard library and runtime notices
+
+The native Civ6Relay.exe launcher includes portions of the Rust standard library
+and runtime support, copyright The Rust Project Contributors and the respective
+authors identified in Rust-COPYRIGHT-library.html.
+
+Rust's standard library is licensed under Apache-2.0 OR MIT. Both license texts
+are retained here, together with the official standard-library copyright bundle
+and supplemental Unicode, BSD and LLVM runtime-exception terms.
+
+Build toolchain: rustc 1.95.0 (59807616e 2026-04-14)
+Source commit: 59807616e1fa2540724bfbac14d7976d7e4a3860
+Target: x86_64-pc-windows-msvc
+
+Rust-LICENSE-MIT.txt is the unmodified official LICENSE-MIT at:
+https://github.com/rust-lang/rust/blob/59807616e1fa2540724bfbac14d7976d7e4a3860/LICENSE-MIT
+
+Rust-COPYRIGHT-library.html is the unmodified official aggregate notice shipped
+in that toolchain's share/doc/rust/COPYRIGHT-library.html. It covers the standard
+library across platforms and retains upstream third-party notices and texts.
+
+The other Rust-LICENSE-* files are unmodified copies from the same toolchain's
+share/doc/rust/licenses directory:
+  Apache-2.0.txt  -> Rust-LICENSE-APACHE.txt
+  BSD-2-Clause.txt -> Rust-LICENSE-BSD-2-Clause.txt
+  Unicode-3.0.txt -> Rust-LICENSE-Unicode-3.0.txt
+  LLVM-exception.txt -> Rust-LICENSE-LLVM-exception.txt
