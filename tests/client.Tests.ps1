@@ -18,7 +18,7 @@ try {
     Throws { New-ClientPreferences '玩家' '8.8.8.8' '70000' }
     function Get-ClientPreferences { return $prefs }
     $profile = [ordered]@{
-        schema=3;version='3.3.0-preview';backend='easytier';routing_mode='lan-mesh';engine_version='2.6.4-civ6.2'
+        schema=3;version='3.4.0-preview';backend='easytier';routing_mode='lan-mesh';engine_version='2.6.4-civ6.2'
         player='player1';instance_id=[Guid]::NewGuid().ToString();credential_id=[Guid]::NewGuid().ToString()
         network_name='civ6-test';network='10.77.77.0/24';client_ip='10.77.77.2';mtu=1360
         credential_secret=[Convert]::ToBase64String((1..32));server_public_key=[Convert]::ToBase64String((33..64))

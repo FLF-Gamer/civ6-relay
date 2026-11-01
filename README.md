@@ -1,4 +1,4 @@
-# 文明6联机助手 3.3.0-preview
+# 文明6联机助手 3.4.0-preview
 
 让 Windows 玩家通过虚拟局域网联机：优先玩家直连，无法直连时由自己的 Linux 服务器中继。文明6中选择 **多人游戏 → 局域网**。
 
@@ -20,8 +20,8 @@ Release 完整安装包已包含服务端和 Windows 组件，推荐用于部署
 在服务器上执行：
 
 ```bash
-curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.3.0-preview/civ6-relay-server-3.3.0-preview-linux-amd64.tar.gz
-tar -xzf civ6-relay-server-3.3.0-preview-linux-amd64.tar.gz
+curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.4.0-preview/civ6-relay-server-3.4.0-preview-linux-amd64.tar.gz
+tar -xzf civ6-relay-server-3.4.0-preview-linux-amd64.tar.gz
 cd civ6-relay
 sudo bash install.sh --endpoint SERVER_IP --port 9527
 sudo civ6-relay status
@@ -61,13 +61,15 @@ sudo civ6-relay bundle --output /root/windows-new.zip
 适用于 Windows 10/11 x64。
 
 1. 完整解压 `windows.zip`，双击 `Civ6Relay.exe`，允许管理员权限。请在解压后的文件夹启动，保留同目录的其他文件。
-2. 填写自己的玩家昵称、服务器 IP 和端口，点击“连接”。支持中文昵称。
+2. 填写自己的玩家昵称、服务器 IP 和端口，点击“连接网络”。支持中文昵称。
 3. 所有玩家连接后，在文明6中选择“多人游戏 → 局域网”，由一人建房，其他人刷新列表并加入。
-4. 结束后点击“断开”。默认关闭窗口也会断开，可取消“关闭窗口时自动断开”。
+4. 结束后点击“断开连接”。默认关闭窗口也会断开，可取消“关闭窗口时自动断开连接”。
 
-“网络状态”显示玩家、实际直连或中继路径及延迟。“延迟（Ping）”测量到玩家的延迟，无回应不等于游戏不通；“链路延迟”在中继时只代表到中继的延迟。
+桌面界面将连接设置、玩家列表和运行日志分区显示，支持窗口缩放和高 DPI 屏幕。
 
-“运行日志”支持复制和导出；排查问题时点击“网络诊断”，复制完整结果，并注明谁建房、谁看不到房间。
+玩家列表显示玩家、实际直连或中继路径及延迟。“实时延迟”测量到玩家的延迟，无回应不等于游戏不通；“链路延迟”在中继时只代表到中继的延迟。
+
+通过左侧导航切换“联机大厅”“运行日志”和“设置”。日志支持复制和导出；排查问题时在“设置 → 网络诊断”中点击“开始诊断”，复制完整结果，并注明谁建房、谁看不到房间。
 
 虚拟网络承载游戏 UDP 和 ICMP，仅为游戏网段添加路由；普通上网和下载保持本地网络。直连时游戏数据在玩家之间传输，中继时会占用服务器带宽。
 
@@ -83,7 +85,7 @@ sudo systemctl status civ6-relay.service
 - 无法连接：检查服务器 IP、客户端端口、云安全组和 firewalld，确认同一端口的 TCP、UDP 都已放行。
 - 看不到玩家：确认双方使用同一服务器导出的 ZIP，并且都已连接。
 - 看不到房间：确认选择“局域网”，游戏版本、DLC 和模组兼容，并允许文明6通过 Windows 防火墙。
-- 提示组件缺失或损坏：先断开，再点击“检查组件”；更换 Windows 客户端时请先断开旧版，再完整解压新版。
+- 提示组件缺失或损坏：先断开，再到设置中点击“检查组件”；更换 Windows 客户端时请先断开旧版，再完整解压新版。
 
 当前安装脚本用于全新安装：检测到已有配置或服务时会停止，尚无原地升级命令。重复执行安装脚本不会覆盖现有接入信息。
 

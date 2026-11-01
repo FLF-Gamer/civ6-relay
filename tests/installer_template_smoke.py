@@ -130,8 +130,9 @@ def main():
         path.chmod(0o755)
 
     # Missing client entry points must fail before creating an installation.
-    client_files = ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'LiveMonitor.cs', 'README.txt')
-    for absent in ('Civ6Relay.exe', 'LiveMonitor.cs'):
+    desktop_files = ('Desktop.ps1', 'Desktop.xaml', 'DesktopModel.cs')
+    client_files = ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'LiveMonitor.cs', 'README.txt') + desktop_files
+    for absent in ('Civ6Relay.exe', 'LiveMonitor.cs') + desktop_files:
         with tempfile.TemporaryDirectory(prefix='civ6-missing-runtime-') as temporary:
             source = Path(temporary)
             shutil.copyfile(str(ROOT / 'install.sh'), str(source / 'install.sh'))
@@ -145,7 +146,7 @@ def main():
             missing = command(['bash', source / 'install.sh', '--endpoint', '8.8.8.8', '--port', '29527'], False)
             require(absent in missing.stderr, 'Missing client file was not identified: ' + absent)
             require(not PROGRAM.exists() and not CONFIG.exists(), 'Missing runtime mutated installation paths')
-    print('PASS missing EXE or live runtime is rejected before installation')
+    print('PASS missing launcher, desktop or live runtime is rejected before installation')
 
     command(['bash', ROOT / 'install.sh', '--endpoint', '8.8.8.8', '--port', '29527'])
     require((PROGRAM / '.civ6-relay-managed').read_text().strip() == 'civ6-relay/v3', 'Installation marker missing')
@@ -157,6 +158,9 @@ def main():
         require(digest(PROGRAM / 'bin' / name) == digest(ROOT / source), 'Installed component differs: ' + name)
     require(digest(PROGRAM / 'client/windows/Civ6Relay.exe') == digest(ROOT / 'client/windows/Civ6Relay.exe'),
         'Installed launcher differs from source')
+    for name in desktop_files:
+        require(digest(PROGRAM / 'client/windows' / name) == digest(ROOT / 'client/windows' / name),
+            'Installed desktop runtime differs: ' + name)
     with zipfile.ZipFile(str(PROGRAM / 'client/windows-template.zip')) as archive:
         require('profile.json' not in archive.namelist(), 'Public Windows template contains access information')
         require('bin/Packet.dll' not in archive.namelist(), 'Windows template contains the retired Npcap DLL')
@@ -180,6 +184,9 @@ def main():
             'Shared Windows export omitted or changed the live runtime')
         require(archive.read('Civ6Relay.exe') == (ROOT / 'client/windows/Civ6Relay.exe').read_bytes(),
             'Shared Windows export omitted or changed the launcher')
+        for name in desktop_files:
+            require(archive.read(name) == (ROOT / 'client/windows' / name).read_bytes(),
+                'Shared Windows export omitted or changed desktop runtime: ' + name)
         profile = json.loads(archive.read('profile.json').decode('utf-8'))
         require(profile.get('schema') == 4 and profile.get('access_mode') == 'shared', 'Shared profile shape differs')
         require(not any(name in profile for name in ('instance_id', 'player', 'client_ip', 'endpoint', 'port', 'network_secret')),

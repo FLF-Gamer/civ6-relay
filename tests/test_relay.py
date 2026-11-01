@@ -139,6 +139,12 @@ class PackageTests(unittest.TestCase):
             path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('public source fixture')
         self.launcher=b'MZ\x00\x80\xffpublic-launcher-fixture'
         (self.root/'client/windows/Civ6Relay.exe').write_bytes(self.launcher)
+        self.desktop={
+            'Desktop.ps1':b'\xef\xbb\xbf# desktop script fixture\r\n',
+            'Desktop.xaml':'<Window Title="联机助手" />\r\n'.encode('utf-8'),
+            'DesktopModel.cs':b'// desktop model fixture\r\n',
+        }
+        for name,data in self.desktop.items():(self.root/'client/windows'/name).write_bytes(data)
         self.marker='dummy-private-package-marker'
         for name in ('.git/private.txt','.build/common-profile.json'):
             path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(self.marker)
@@ -167,12 +173,15 @@ class PackageTests(unittest.TestCase):
         with zipfile.ZipFile(template) as archive:
             self.assertIn('LiveMonitor.cs',archive.namelist());self.assertIn('bin/easytier-core.exe',archive.namelist())
             self.assertEqual(archive.read('Civ6Relay.exe'),self.launcher)
+            for name,data in self.desktop.items():self.assertEqual(archive.read(name),data)
             self.assertNotIn('profile.json',archive.namelist())
             self.assertNotIn(self.marker.encode(),b''.join(archive.read(name) for name in archive.namelist()))
         with tarfile.open(server) as archive:
             self.assertIn('civ6-relay/client/windows/LiveMonitor.cs',archive.getnames())
             self.assertIn('civ6-relay/client/launcher/src/main.rs',archive.getnames())
             self.assertEqual(archive.extractfile('civ6-relay/client/windows/Civ6Relay.exe').read(),self.launcher)
+            for name,data in self.desktop.items():
+                self.assertEqual(archive.extractfile('civ6-relay/client/windows/'+name).read(),data)
             for name in archive.getnames():
                 self.assertFalse(any(part in ('.git','.build','profile.json','state.json','preferences.json') for part in Path(name).parts))
 
@@ -192,10 +201,12 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(saved['credential_secret'],self.marker);self.assertEqual(saved['version'],packaging.VERSION)
             self.assertIn('LiveMonitor.cs',archive.namelist())
             self.assertEqual(archive.read('Civ6Relay.exe'),self.launcher)
+            for name,data in self.desktop.items():self.assertEqual(archive.read(name),data)
         base=self.root/'.build'/('civ6-relay-client-'+packaging.VERSION+'-windows-base.zip')
         with zipfile.ZipFile(base) as archive:
             self.assertNotIn('profile.json',archive.namelist())
             self.assertEqual(archive.read('Civ6Relay.exe'),self.launcher)
+            for name,data in self.desktop.items():self.assertEqual(archive.read(name),data)
         self.assertEqual(set(json.loads((output/'SHA256SUMS.json').read_text())),{
             common.name,'civ6-relay-server-'+packaging.VERSION+'-linux-amd64.tar.gz'})
 
@@ -215,6 +226,17 @@ class PackageTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit,'Windows launcher missing'):
             self.package('--output-dir',str(output))
         self.assertFalse(output.exists())
+
+    def test_missing_desktop_runtime_is_rejected_before_archiving(self):
+        output=self.root/'public'
+        for name,data in self.desktop.items():
+            with self.subTest(name=name):
+                path=self.root/'client/windows'/name;path.unlink()
+                try:
+                    with self.assertRaisesRegex(SystemExit,'Windows desktop runtime missing: '+name):
+                        self.package('--output-dir',str(output))
+                    self.assertFalse(output.exists())
+                finally:path.write_bytes(data)
 
     def test_packet_dependency_is_rejected_before_archiving(self):
         (self.root/'vendor/easytier/windows-x86_64/Packet.dll').write_text('excluded dependency fixture')

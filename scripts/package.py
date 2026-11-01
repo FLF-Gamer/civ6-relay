@@ -9,7 +9,7 @@ import shutil
 import tarfile
 import zipfile
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='3.3.0-preview'
+VERSION='3.4.0-preview'
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -31,6 +31,9 @@ def main():
                 raise SystemExit('Dependency checksum mismatch: '+name)
     if not (ROOT/'client/windows/Civ6Relay.exe').is_file():
         raise SystemExit('Windows launcher missing; run scripts/build-launcher.py first')
+    for name in ('Desktop.ps1','Desktop.xaml','DesktopModel.cs'):
+        if not (ROOT/'client/windows'/name).is_file():
+            raise SystemExit('Windows desktop runtime missing: '+name)
     output.mkdir(parents=True,exist_ok=True)
     if output==(ROOT/'dist').resolve():
         retired=ROOT/'.build/retired-process-relay'
