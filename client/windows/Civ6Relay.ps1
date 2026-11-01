@@ -667,7 +667,7 @@ function Test-Relay {
     catch { throw '无法读取客户端配置，请检查设置或重新解压客户端。' }
     try { $snapshot = Get-MeshSnapshot }
     catch { $snapshot = [pscustomobject]@{Text='玩家连接状态：读取失败。';Peers=@()} }
-    $lines = @(('版本：3.2.5；时间：' + [DateTimeOffset]::Now.ToString('o')), $snapshot.Text,
+    $lines = @(('版本：3.3.0；时间：' + [DateTimeOffset]::Now.ToString('o')), $snapshot.Text,
         ('游戏虚拟网段：' + $profile.network))
     foreach ($peer in $snapshot.Peers) {
         $lines += $peer.Player + ' | ' + $peer.VirtualIP + ' | ' + $peer.Channel + ' | ' + $peer.RTT
@@ -846,148 +846,316 @@ function Get-LiveView {
 function Show-RelayWindow {
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
-    [Windows.Forms.Application]::EnableVisualStyles()
-    $form = New-Object Windows.Forms.Form
-    $form.Text = '文明6联机助手'
-    $form.Font = New-Object Drawing.Font('Microsoft YaHei UI',10)
-    $form.AutoScaleDimensions = New-Object Drawing.SizeF(96,96)
-    $form.AutoScaleMode = 'Dpi'
-    $form.ClientSize = New-Object Drawing.Size(1040,760)
-    $form.MinimumSize = New-Object Drawing.Size(920,680)
-    $form.StartPosition = 'CenterScreen'
-    $form.SuspendLayout()
-    $layout = New-Object Windows.Forms.TableLayoutPanel
-    $layout.Dock='Fill';$layout.ColumnCount=1;$layout.RowCount=6
-    $layout.Padding=New-Object Windows.Forms.Padding(18)
-    $layout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
-    foreach ($row in @(0,1,2,3,5)) {
-        $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    if (-not ('Civ6Relay.Ui.Dpi' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+namespace Civ6Relay.Ui {
+    public static class Dpi {
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+        [DllImport("user32.dll")]
+        private static extern bool SetProcessDPIAware();
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr value);
+        public static void Enable() {
+            bool enabled = false;
+            try { enabled = SetProcessDpiAwarenessContext(new IntPtr(-4)); }
+            catch (EntryPointNotFoundException) { }
+            catch (DllNotFoundException) { }
+            if (!enabled) {
+                try { SetProcessDPIAware(); }
+                catch (EntryPointNotFoundException) { }
+                catch (DllNotFoundException) { }
+            }
+            try { SetThreadDpiAwarenessContext(new IntPtr(-4)); }
+            catch (EntryPointNotFoundException) { }
+            catch (DllNotFoundException) { }
+        }
     }
-    $layout.RowStyles.Insert(4,(New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100)))
-    $form.Controls.Add($layout)
-    $preferences = Get-ClientPreferences
-    $fields = New-Object Windows.Forms.TableLayoutPanel
+}
+'@
+    }
+    [Civ6Relay.Ui.Dpi]::Enable()
+    [Windows.Forms.Application]::EnableVisualStyles()
+    $palette=@{
+        Canvas=[Drawing.ColorTranslator]::FromHtml('#F2F5FA')
+        White=[Drawing.Color]::White
+        Text=[Drawing.ColorTranslator]::FromHtml('#172B4D')
+        Muted=[Drawing.ColorTranslator]::FromHtml('#64748B')
+        Blue=[Drawing.ColorTranslator]::FromHtml('#2563EB')
+        BlueHover=[Drawing.ColorTranslator]::FromHtml('#1D4ED8')
+        BlueSoft=[Drawing.ColorTranslator]::FromHtml('#EAF1FF')
+        Border=[Drawing.ColorTranslator]::FromHtml('#DFE6F0')
+        Surface=[Drawing.ColorTranslator]::FromHtml('#F7F9FC')
+        Green=[Drawing.ColorTranslator]::FromHtml('#137C66')
+        GreenSoft=[Drawing.ColorTranslator]::FromHtml('#EAF7F2')
+        Amber=[Drawing.ColorTranslator]::FromHtml('#9A6716')
+        Red=[Drawing.ColorTranslator]::FromHtml('#C24145')
+    }
+    $fontBase=New-Object Drawing.Font('Segoe UI',10)
+    $fontTitle=New-Object Drawing.Font('Microsoft YaHei UI',18,[Drawing.FontStyle]::Bold)
+    $fontStrong=New-Object Drawing.Font('Microsoft YaHei UI',10,[Drawing.FontStyle]::Bold)
+    $fontSmall=New-Object Drawing.Font('Microsoft YaHei UI',9)
+    $fontInput=New-Object Drawing.Font('Segoe UI',11)
+    $fontMono=New-Object Drawing.Font('Consolas',9.5)
+    $form=New-Object Windows.Forms.Form
+    $form.Text='文明6联机助手';$form.Font=$fontBase
+    $form.ForeColor=$palette.Text;$form.BackColor=$palette.Canvas
+    $form.AutoScaleDimensions=New-Object Drawing.SizeF(96,96)
+    $form.AutoScaleMode='Dpi'
+    $form.ClientSize=New-Object Drawing.Size(984,740)
+    $form.MinimumSize=New-Object Drawing.Size(900,660)
+    $form.StartPosition='CenterScreen'
+    $windowIcon=$null
+    try {
+        $launcherPath=Join-Path $script:PackageRoot 'Civ6Relay.exe'
+        if (Test-Path -LiteralPath $launcherPath -PathType Leaf) {
+            $windowIcon=[Drawing.Icon]::ExtractAssociatedIcon($launcherPath)
+            $form.Icon=$windowIcon
+        }
+    } catch { }
+    $tips=New-Object Windows.Forms.ToolTip
+    $tips.AutoPopDelay=6000;$tips.InitialDelay=450;$tips.ReshowDelay=200
+    $form.SuspendLayout()
+    $canvas=New-Object Windows.Forms.Panel
+    $canvas.Dock='Fill';$canvas.AutoScroll=$true;$canvas.BackColor=$palette.Canvas
+    $form.Controls.Add($canvas)
+    $layout=New-Object Windows.Forms.TableLayoutPanel
+    $layout.Dock='Top';$layout.ColumnCount=1;$layout.RowCount=4
+    $layout.Padding=New-Object Windows.Forms.Padding(22,18,22,14)
+    $layout.Margin=New-Object Windows.Forms.Padding(0)
+    $layout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $layout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $canvas.Controls.Add($layout)
+
+    $header=New-Object Windows.Forms.TableLayoutPanel
+    $header.Dock='Fill';$header.AutoSize=$true;$header.ColumnCount=1;$header.RowCount=2
+    $header.Margin=New-Object Windows.Forms.Padding(0,0,0,16)
+    $header.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $header.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $title=New-Object Windows.Forms.Label
+    $title.Text='文明6联机助手';$title.Font=$fontTitle;$title.AutoSize=$true;$title.Dock='Fill'
+    $title.Margin=New-Object Windows.Forms.Padding(0,0,0,4)
+    $header.Controls.Add($title,0,0)
+    $notice=New-Object Windows.Forms.Label
+    $notice.AutoSize=$true;$notice.Dock='Fill';$notice.ForeColor=$palette.Muted;$notice.Font=$fontSmall
+    $notice.Margin=New-Object Windows.Forms.Padding(0)
+    $notice.Text='文明6：多人游戏 → 局域网'
+    $header.Controls.Add($notice,0,1)
+    $layout.Controls.Add($header,0,0)
+
+    $connectionCard=New-Object Windows.Forms.TableLayoutPanel
+    $connectionCard.Dock='Fill';$connectionCard.AutoSize=$true;$connectionCard.AutoSizeMode='GrowAndShrink'
+    $connectionCard.BackColor=$palette.White;$connectionCard.Padding=New-Object Windows.Forms.Padding(18,16,18,12)
+    $connectionCard.Margin=New-Object Windows.Forms.Padding(0,0,0,16)
+    $connectionCard.ColumnCount=1;$connectionCard.RowCount=2
+    $connectionCard.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $connectionCard.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $layout.Controls.Add($connectionCard,0,1)
+    $preferences=Get-ClientPreferences
+    $fields=New-Object Windows.Forms.TableLayoutPanel
     $fields.Dock='Fill';$fields.AutoSize=$true;$fields.AutoSizeMode='GrowAndShrink'
-    $fields.ColumnCount=4;$fields.RowCount=2;$fields.GrowStyle='FixedSize'
-    $fields.Margin=New-Object Windows.Forms.Padding(0)
-    $fields.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    $fields.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,75))) | Out-Null
-    $fields.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    $fields.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,25))) | Out-Null
+    $fields.ColumnCount=3;$fields.RowCount=2;$fields.GrowStyle='FixedSize'
+    $fields.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
+    foreach ($weight in @(36,46,18)) {
+        $fields.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,$weight))) | Out-Null
+    }
     for ($row=0;$row -lt 2;$row++) {
         $fields.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     }
-    foreach ($item in @(@('玩家昵称',0,0),@('服务器 IP',0,1),@('端口',2,1))) {
+    foreach ($item in @(@('玩家昵称',0),@('服务器 IP',1),@('端口',2))) {
         $label=New-Object Windows.Forms.Label
-        $label.Text=$item[0];$label.AutoSize=$true;$label.Anchor='Left'
-        $leftMargin=if ($item[1] -eq 2) {16} else {0}
-        $label.Margin=New-Object Windows.Forms.Padding($leftMargin,0,12,8)
-        $fields.Controls.Add($label,[int]$item[1],[int]$item[2])
+        $label.Text=$item[0];$label.AutoSize=$true;$label.Dock='Fill'
+        $label.Font=$fontSmall;$label.ForeColor=$palette.Muted
+        $label.Margin=New-Object Windows.Forms.Padding(0,0,12,7)
+        $fields.Controls.Add($label,[int]$item[1],0)
     }
     $nameInput=New-Object Windows.Forms.TextBox
-    $nameInput.Text=$preferences.display_name;$nameInput.MaxLength=24
-    $fields.Controls.Add($nameInput,1,0);$fields.SetColumnSpan($nameInput,3)
+    $nameInput.Text=$preferences.display_name;$nameInput.MaxLength=24;$nameInput.TabIndex=0
     $serverInput=New-Object Windows.Forms.TextBox
-    $serverInput.Text=$preferences.endpoint;$serverInput.MaxLength=15
-    $fields.Controls.Add($serverInput,1,1)
+    $serverInput.Text=$preferences.endpoint;$serverInput.MaxLength=15;$serverInput.TabIndex=1
     $portInput=New-Object Windows.Forms.TextBox
-    $portInput.Text=[string]$preferences.port;$portInput.MaxLength=5
-    $fields.Controls.Add($portInput,3,1)
-    foreach ($fieldInput in @($nameInput,$serverInput,$portInput)) {
-        $fieldInput.Anchor='Left, Right';$fieldInput.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
+    $portInput.Text=[string]$preferences.port;$portInput.MaxLength=5;$portInput.TabIndex=2
+    $fieldInputs=@($nameInput,$serverInput,$portInput)
+    for ($index=0;$index -lt $fieldInputs.Count;$index++) {
+        $fieldInput=$fieldInputs[$index]
+        $fieldInput.Dock='Fill';$fieldInput.Font=$fontInput;$fieldInput.BorderStyle='FixedSingle'
+        $fieldInput.BackColor=$palette.White;$fieldInput.ForeColor=$palette.Text
+        $rightMargin=if ($index -eq 2) {0} else {16}
+        $fieldInput.Margin=New-Object Windows.Forms.Padding(0,0,$rightMargin,0)
+        $fields.Controls.Add($fieldInput,$index,1)
     }
-    $layout.Controls.Add($fields,0,0)
-    $notice=New-Object Windows.Forms.Label
-    $notice.AutoSize=$true;$notice.Dock='Fill'
-    $notice.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
-    $notice.Text='文明6：多人游戏 → 局域网。'
-    $layout.Controls.Add($notice,0,1)
-    $status=New-Object Windows.Forms.Label
-    $status.AutoSize=$true;$status.Dock='Fill';$status.Text='正在读取状态…'
-    $status.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
-    $layout.Controls.Add($status,0,2)
+    $tips.SetToolTip($serverInput,'填写服务器的 IPv4 地址。')
+    $connectionCard.Controls.Add($fields,0,0)
+    $actionLayout=New-Object Windows.Forms.TableLayoutPanel
+    $actionLayout.Dock='Fill';$actionLayout.AutoSize=$true;$actionLayout.ColumnCount=2;$actionLayout.RowCount=1
+    $actionLayout.Margin=New-Object Windows.Forms.Padding(0)
+    $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $actionLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $actionLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $connectionCard.Controls.Add($actionLayout,0,1)
     $actions=New-Object Windows.Forms.FlowLayoutPanel
     $actions.Dock='Fill';$actions.AutoSize=$true;$actions.AutoSizeMode='GrowAndShrink';$actions.WrapContents=$true
-    $actions.Margin=New-Object Windows.Forms.Padding(0)
-    $layout.Controls.Add($actions,0,3)
+    $actions.FlowDirection='LeftToRight';$actions.Margin=New-Object Windows.Forms.Padding(12,0,0,0)
+    $actionLayout.Controls.Add($actions,1,0)
+
     $tabs=New-Object Windows.Forms.TabControl
-    $tabs.Dock='Fill';$tabs.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
+    $tabs.Dock='Fill';$tabs.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
+    $tabs.DrawMode='OwnerDrawFixed';$tabs.SizeMode='Fixed';$tabs.ItemSize=New-Object Drawing.Size(132,40)
+    $tabs.Font=$fontStrong
+    $tabs.Add_DrawItem({
+        param($sender,$eventArgs)
+        $selected=($sender.SelectedIndex -eq $eventArgs.Index)
+        $background=if ($selected) {$palette.White} else {$palette.Canvas}
+        $foreground=if ($selected) {$palette.Blue} else {$palette.Muted}
+        $brush=New-Object Drawing.SolidBrush($background)
+        try { $eventArgs.Graphics.FillRectangle($brush,$eventArgs.Bounds) } finally { $brush.Dispose() }
+        [Windows.Forms.TextRenderer]::DrawText($eventArgs.Graphics,$sender.TabPages[$eventArgs.Index].Text,
+            $sender.Font,$eventArgs.Bounds,$foreground,([Windows.Forms.TextFormatFlags]::HorizontalCenter -bor [Windows.Forms.TextFormatFlags]::VerticalCenter))
+        if ($selected) {
+            $accent=New-Object Drawing.SolidBrush($palette.Blue)
+            try { $eventArgs.Graphics.FillRectangle($accent,$eventArgs.Bounds.Left+18,$eventArgs.Bounds.Bottom-3,[Math]::Max(0,$eventArgs.Bounds.Width-36),3) }
+            finally { $accent.Dispose() }
+        }
+    })
     $statePage=New-Object Windows.Forms.TabPage
-    $statePage.Text='网络状态';$statePage.Padding=New-Object Windows.Forms.Padding(10)
+    $statePage.Text='网络状态';$statePage.Padding=New-Object Windows.Forms.Padding(16)
+    $statePage.BackColor=$palette.White
     $eventsPage=New-Object Windows.Forms.TabPage
-    $eventsPage.Text='运行日志';$eventsPage.Padding=New-Object Windows.Forms.Padding(10)
+    $eventsPage.Text='运行日志';$eventsPage.Padding=New-Object Windows.Forms.Padding(16)
+    $eventsPage.BackColor=$palette.White
     $tabs.TabPages.Add($statePage);$tabs.TabPages.Add($eventsPage)
-    $layout.Controls.Add($tabs,0,4)
+    $layout.Controls.Add($tabs,0,2)
     $stateLayout=New-Object Windows.Forms.TableLayoutPanel
     $stateLayout.Dock='Fill';$stateLayout.ColumnCount=1;$stateLayout.RowCount=4
+    $stateLayout.Margin=New-Object Windows.Forms.Padding(0)
     $stateLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $stateLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $stateLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $stateLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    $stateLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Absolute,130))) | Out-Null
+    $stateLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $statePage.Controls.Add($stateLayout)
-    $latencyNote=New-Object Windows.Forms.Label
-    $latencyNote.AutoSize=$true;$latencyNote.Dock='Fill'
-    $latencyNote.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
-    $latencyNote.Text='中继时，链路延迟只到中继节点。'
-    $stateLayout.Controls.Add($latencyNote,0,0)
+    $status=New-Object Windows.Forms.Label
+    $status.AutoSize=$true;$status.Dock='Fill';$status.Text='正在读取状态…'
+    $status.Font=$fontStrong;$status.ForeColor=$palette.Text;$status.BackColor=$palette.BlueSoft
+    $status.Padding=New-Object Windows.Forms.Padding(12,10,12,10)
+    $status.Margin=New-Object Windows.Forms.Padding(0,0,0,12)
+    $stateLayout.Controls.Add($status,0,0)
     $grid=New-Object Windows.Forms.DataGridView
     $grid.Dock='Fill';$grid.ReadOnly=$true;$grid.AllowUserToAddRows=$false;$grid.AllowUserToDeleteRows=$false
-    $grid.RowHeadersVisible=$false;$grid.AutoSizeColumnsMode='Fill';$grid.SelectionMode='FullRowSelect';$grid.MultiSelect=$false
-    $grid.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
-    foreach ($column in @(@('Player','玩家',14),@('VirtualIP','虚拟 IP',15),@('Channel','实际路径',15),
-        @('RTT','延迟（Ping）',20),@('LinkRTT','链路延迟',21),@('SampleTime','采样时间',15))) {
+    $grid.AllowUserToResizeRows=$false;$grid.RowHeadersVisible=$false
+    $grid.AutoSizeColumnsMode='Fill';$grid.AutoSizeRowsMode='AllCells'
+    $grid.SelectionMode='FullRowSelect';$grid.MultiSelect=$false
+    $grid.BorderStyle='None';$grid.CellBorderStyle='SingleHorizontal';$grid.GridColor=$palette.Border
+    $grid.BackgroundColor=$palette.White;$grid.EnableHeadersVisualStyles=$false
+    $grid.ColumnHeadersBorderStyle='None';$grid.ColumnHeadersHeightSizeMode='AutoSize'
+    $grid.ColumnHeadersDefaultCellStyle.BackColor=$palette.Surface
+    $grid.ColumnHeadersDefaultCellStyle.ForeColor=$palette.Muted
+    $grid.ColumnHeadersDefaultCellStyle.Font=$fontSmall
+    $grid.ColumnHeadersDefaultCellStyle.Padding=New-Object Windows.Forms.Padding(10,10,10,10)
+    $grid.DefaultCellStyle.BackColor=$palette.White;$grid.DefaultCellStyle.ForeColor=$palette.Text
+    $grid.DefaultCellStyle.Font=$fontBase;$grid.DefaultCellStyle.Padding=New-Object Windows.Forms.Padding(10,8,10,8)
+    $grid.DefaultCellStyle.SelectionBackColor=$palette.BlueSoft;$grid.DefaultCellStyle.SelectionForeColor=$palette.Text
+    $grid.AlternatingRowsDefaultCellStyle.BackColor=$palette.Surface
+    $grid.Margin=New-Object Windows.Forms.Padding(0,0,0,9)
+    foreach ($column in @(@('Player','玩家',17,96),@('VirtualIP','虚拟 IP',17,110),@('Channel','实际路径',19,130),
+        @('RTT','延迟（Ping）',18,124),@('LinkRTT','链路延迟',17,110),@('SampleTime','采样时间',12,86))) {
         $columnIndex=$grid.Columns.Add($column[0],$column[1])
         $grid.Columns[$columnIndex].FillWeight=[single]$column[2]
+        $grid.Columns[$columnIndex].MinimumWidth=[int]$column[3]
         $grid.Columns[$columnIndex].SortMode='NotSortable'
     }
+    $grid.Columns['VirtualIP'].DefaultCellStyle.Font=$fontMono
+    $grid.Columns['SampleTime'].DefaultCellStyle.Font=$fontMono
+    $grid.Columns['SampleTime'].DefaultCellStyle.ForeColor=$palette.Muted
+    $grid.Columns['RTT'].HeaderCell.ToolTipText='对玩家虚拟 IP 的 Ping 往返延迟。'
+    $grid.Columns['LinkRTT'].HeaderCell.ToolTipText='中继时为到中继节点的延迟。'
     $stateLayout.Controls.Add($grid,0,1)
+    $latencyNote=New-Object Windows.Forms.Label
+    $latencyNote.AutoSize=$true;$latencyNote.Dock='Fill';$latencyNote.Font=$fontSmall;$latencyNote.ForeColor=$palette.Muted
+    $latencyNote.Margin=New-Object Windows.Forms.Padding(0)
+    $latencyNote.Text='中继时，链路延迟只到中继节点。'
+    $stateLayout.Controls.Add($latencyNote,0,2)
+    $operationPanel=New-Object Windows.Forms.TableLayoutPanel
+    $operationPanel.Dock='Fill';$operationPanel.ColumnCount=1;$operationPanel.RowCount=2
+    $operationPanel.Height=104;$operationPanel.MinimumSize=New-Object Drawing.Size(0,104)
+    $operationPanel.Margin=New-Object Windows.Forms.Padding(0,12,0,0)
+    $operationPanel.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $operationPanel.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $operationPanel.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
     $resultLabel=New-Object Windows.Forms.Label
-    $resultLabel.AutoSize=$true;$resultLabel.Text='操作结果'
+    $resultLabel.AutoSize=$true;$resultLabel.Text='操作结果';$resultLabel.Font=$fontSmall;$resultLabel.ForeColor=$palette.Muted
     $resultLabel.Margin=New-Object Windows.Forms.Padding(0,0,0,6)
-    $stateLayout.Controls.Add($resultLabel,0,2)
+    $operationPanel.Controls.Add($resultLabel,0,0)
     $result=New-Object Windows.Forms.TextBox
     $result.Dock='Fill';$result.Multiline=$true;$result.ReadOnly=$true;$result.ScrollBars='Vertical'
-    $result.Margin=New-Object Windows.Forms.Padding(0)
+    $result.BorderStyle='None';$result.BackColor=$palette.Surface;$result.ForeColor=$palette.Text
+    $result.Font=$fontSmall;$result.Margin=New-Object Windows.Forms.Padding(0)
     $result.Text=''
-    $stateLayout.Controls.Add($result,0,3)
+    $operationPanel.Controls.Add($result,0,1)
+    $stateLayout.Controls.Add($operationPanel,0,3);$operationPanel.Visible=$false
+
     $eventLayout=New-Object Windows.Forms.TableLayoutPanel
     $eventLayout.Dock='Fill';$eventLayout.ColumnCount=1;$eventLayout.RowCount=4
+    $eventLayout.Margin=New-Object Windows.Forms.Padding(0)
     $eventLayout.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
-    foreach ($row in @(0,1,3)) {
-        $eventLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
-    }
-    $eventLayout.RowStyles.Insert(2,(New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100)))
+    $eventLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $eventLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
+    $eventLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent,100))) | Out-Null
+    $eventLayout.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::AutoSize))) | Out-Null
     $eventsPage.Controls.Add($eventLayout)
     $eventActions=New-Object Windows.Forms.FlowLayoutPanel
     $eventActions.Dock='Fill';$eventActions.AutoSize=$true;$eventActions.AutoSizeMode='GrowAndShrink';$eventActions.WrapContents=$true
-    $eventActions.Margin=New-Object Windows.Forms.Padding(0)
+    $eventActions.Margin=New-Object Windows.Forms.Padding(0,0,0,10)
     $eventLayout.Controls.Add($eventActions,0,0)
     $eventStatus=New-Object Windows.Forms.Label
     $eventStatus.AutoSize=$true;$eventStatus.Dock='Fill';$eventStatus.Text=''
-    $eventStatus.Margin=New-Object Windows.Forms.Padding(0,0,0,6)
+    $eventStatus.Font=$fontSmall;$eventStatus.ForeColor=$palette.Muted
+    $eventStatus.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
     $eventLayout.Controls.Add($eventStatus,0,1)
     $runningLog=New-Object Windows.Forms.RichTextBox
     $runningLog.Dock='Fill';$runningLog.ReadOnly=$true;$runningLog.WordWrap=$false;$runningLog.DetectUrls=$false
-    $runningLog.Font=New-Object Drawing.Font('Consolas',9)
-    $runningLog.BackColor=[Drawing.Color]::White;$runningLog.ScrollBars='Both';$runningLog.HideSelection=$false
-    $runningLog.Margin=New-Object Windows.Forms.Padding(0,0,0,6)
+    $runningLog.Font=$fontMono;$runningLog.ForeColor=$palette.Text;$runningLog.BackColor=$palette.Surface
+    $runningLog.BorderStyle='None';$runningLog.ScrollBars='Both';$runningLog.HideSelection=$false
+    $runningLog.Margin=New-Object Windows.Forms.Padding(0,0,0,8)
     $eventLayout.Controls.Add($runningLog,0,2)
     $eventFeedback=New-Object Windows.Forms.Label
     $eventFeedback.AutoSize=$true;$eventFeedback.Dock='Fill';$eventFeedback.Text=''
+    $eventFeedback.Font=$fontSmall;$eventFeedback.ForeColor=$palette.Muted
     $eventFeedback.Margin=New-Object Windows.Forms.Padding(0)
     $eventLayout.Controls.Add($eventFeedback,0,3)
     $autoDisconnect=New-Object Windows.Forms.CheckBox
     $autoDisconnect.AutoSize=$true;$autoDisconnect.Text='关闭窗口时自动断开';$autoDisconnect.Checked=$true
+    $autoDisconnect.Font=$fontSmall;$autoDisconnect.ForeColor=$palette.Muted
     $autoDisconnect.Margin=New-Object Windows.Forms.Padding(0)
-    $layout.Controls.Add($autoDisconnect,0,5)
+    $layout.Controls.Add($autoDisconnect,0,3)
     $buttons=New-Object Collections.ArrayList
     $newButton={
-        param([string]$Caption)
+        param([string]$Caption,[bool]$Primary=$false)
         $control=New-Object Windows.Forms.Button
-        $control.Text=$Caption;$control.AutoSize=$true
-        $control.MinimumSize=New-Object Drawing.Size(112,34)
-        $control.Margin=New-Object Windows.Forms.Padding(0,0,10,8)
+        $control.Text=$Caption;$control.AutoSize=$true;$control.FlatStyle='Flat'
+        $control.Font=$fontSmall;$control.Cursor=[Windows.Forms.Cursors]::Hand
+        $control.MinimumSize=New-Object Drawing.Size(100,36)
+        $control.Padding=New-Object Windows.Forms.Padding(10,6,10,6)
+        $control.Margin=New-Object Windows.Forms.Padding(0,0,8,0)
+        $control.UseVisualStyleBackColor=$false
+        $control.FlatAppearance.BorderSize=1;$control.FlatAppearance.BorderColor=$palette.Border
+        $control.BackColor=$palette.White;$control.ForeColor=$palette.Text
+        $control.FlatAppearance.MouseOverBackColor=$palette.Surface
+        $control.FlatAppearance.MouseDownBackColor=$palette.BlueSoft
+        if ($Primary) {
+            $control.Font=$fontStrong;$control.MinimumSize=New-Object Drawing.Size(138,36)
+            $control.BackColor=$palette.Blue;$control.ForeColor=$palette.White
+            $control.FlatAppearance.BorderSize=0;$control.FlatAppearance.MouseOverBackColor=$palette.BlueHover
+            $control.FlatAppearance.MouseDownBackColor=$palette.BlueHover
+            $control.Margin=New-Object Windows.Forms.Padding(0)
+        }
         return $control
     }
     $setBusyControls={
@@ -998,14 +1166,51 @@ function Show-RelayWindow {
     $refresh={
         try {
             $snapshot=Get-LiveView
-            $status.Text=[string]$snapshot.Text
-            $grid.Rows.Clear()
-            foreach ($peer in $snapshot.Peers) {
-                $grid.Rows.Add($peer.Player,$peer.VirtualIP,$peer.Channel,$peer.RTT,$peer.LinkRTT,$peer.SampleTime) | Out-Null
-            }
+            $status.Text=[string]$snapshot.Text;$status.ForeColor=$palette.Text
+            $peers=@($snapshot.Peers)
+            $firstVisibleRow=if ($grid.FirstDisplayedScrollingRowIndex -ge 0) {
+                $grid.Rows[$grid.FirstDisplayedScrollingRowIndex]
+            } else { $null }
+            $rowsByIP=@{}
+            foreach ($row in $grid.Rows) { $rowsByIP[[string]$row.Cells['VirtualIP'].Value]=$row }
+            $grid.SuspendLayout()
+            try {
+                foreach ($peer in $peers) {
+                    $key=[string]$peer.VirtualIP
+                    if ($rowsByIP.ContainsKey($key)) {
+                        $row=$rowsByIP[$key];$rowsByIP.Remove($key)
+                    } else {
+                        $rowIndex=$grid.Rows.Add()
+                        $row=$grid.Rows[$rowIndex]
+                        $row.Cells['Channel'].Style.Font=$fontStrong
+                        $row.Cells['RTT'].Style.Font=$fontStrong
+                    }
+                    $values=@($peer.Player,$peer.VirtualIP,$peer.Channel,$peer.RTT,$peer.LinkRTT,$peer.SampleTime)
+                    for ($cellIndex=0;$cellIndex -lt $values.Count;$cellIndex++) {
+                        $value=[string]$values[$cellIndex]
+                        if ([string]$row.Cells[$cellIndex].Value -ne $value) { $row.Cells[$cellIndex].Value=$value }
+                    }
+                    $pathCell=$row.Cells['Channel']
+                    $pathBackground=$palette.Surface;$pathForeground=$palette.Muted
+                    if ($peer.Channel -eq 'P2P 直连') {
+                        $pathBackground=$palette.GreenSoft;$pathForeground=$palette.Green
+                    } elseif ($peer.Channel -eq '服务器中继') {
+                        $pathBackground=$palette.BlueSoft;$pathForeground=$palette.Blue
+                    }
+                    if ($pathCell.Style.BackColor -ne $pathBackground) { $pathCell.Style.BackColor=$pathBackground }
+                    if ($pathCell.Style.ForeColor -ne $pathForeground) { $pathCell.Style.ForeColor=$pathForeground }
+                    $pingCell=$row.Cells['RTT']
+                    $pingForeground=if ([string]$peer.RTT -match '^\d+(\.\d+)? ms$') { $palette.Blue } else { $palette.Muted }
+                    if ($pingCell.Style.ForeColor -ne $pingForeground) { $pingCell.Style.ForeColor=$pingForeground }
+                }
+                foreach ($row in $rowsByIP.Values) { $grid.Rows.Remove($row) }
+                if ($null -ne $firstVisibleRow -and $firstVisibleRow.Index -ge 0) {
+                    $grid.FirstDisplayedScrollingRowIndex=$firstVisibleRow.Index
+                }
+            } finally { $grid.ResumeLayout() }
             $uiState.LastViewError=''
         } catch {
-            $status.Text='状态暂不可用。'
+            $status.Text='状态暂不可用。';$status.ForeColor=$palette.Red
             $message=$_.Exception.Message
             if ($uiState.LastViewError -ne $message) {
                 $uiState.LastViewError=$message
@@ -1015,15 +1220,16 @@ function Show-RelayWindow {
     }
     $autoScroll=New-Object Windows.Forms.CheckBox
     $autoScroll.AutoSize=$true;$autoScroll.Text='自动滚动';$autoScroll.Checked=$true
-    $autoScroll.Margin=New-Object Windows.Forms.Padding(4,7,12,8)
+    $autoScroll.Font=$fontSmall;$autoScroll.ForeColor=$palette.Muted
+    $autoScroll.Margin=New-Object Windows.Forms.Padding(8,9,0,0)
     $appendLog={
         param([string]$Text)
         if ([string]::IsNullOrEmpty($Text)) { return }
         $selectionStart=$runningLog.SelectionStart;$selectionLength=$runningLog.SelectionLength
-        $runningLog.AppendText($Text.TrimEnd([char[]]"`r`n")+[Environment]::NewLine)
+        $runningLog.AppendText($Text.TrimEnd([char[]]@([char]13,[char]10))+[Environment]::NewLine)
         if ($runningLog.TextLength -gt 160000) {
             $removeCount=$runningLog.TextLength-120000
-            $newline=$runningLog.Text.IndexOf("`n",$removeCount)
+            $newline=$runningLog.Text.IndexOf([char]10,$removeCount)
             if ($newline -ge 0) { $removeCount=$newline+1 }
             $runningLog.Select(0,$removeCount);$runningLog.SelectedText=''
             $selectionStart=[Math]::Max(0,$selectionStart-$removeCount)
@@ -1045,12 +1251,13 @@ function Show-RelayWindow {
     }
     $captions=@('连接','断开','网络诊断','检查组件','保存设置')
     for ($index=0;$index -lt $captions.Count;$index++) {
-        $button=& $newButton $captions[$index];$button.Tag=$index
+        $button=& $newButton $captions[$index] ($index -eq 0);$button.Tag=$index
         $button.Add_Click({
             param($sender,$eventArgs)
             if ($script:Busy) { return }
             $script:Busy=$true;& $setBusyControls
-            $tabs.SelectedTab=$statePage;$result.Text='正在处理…'
+            $tabs.SelectedTab=$statePage;$operationPanel.Visible=$true
+            $result.ForeColor=$palette.Text;$result.Text='正在处理…'
             Add-LiveLog ('开始：'+$sender.Text)
             [Windows.Forms.Application]::DoEvents()
             try {
@@ -1076,14 +1283,16 @@ function Show-RelayWindow {
                     }
                 }
             } catch {
-                $result.Text=$_.Exception.Message
+                $result.ForeColor=$palette.Red;$result.Text=$_.Exception.Message
                 Add-LiveLog ($sender.Text+'失败：'+$result.Text)
             } finally {
                 $script:Busy=$false;& $setBusyControls
                 & $refresh;& $refreshLog
             }
         })
-        $actions.Controls.Add($button);$buttons.Add($button) | Out-Null
+        if ($index -eq 0) { $actionLayout.Controls.Add($button,0,0) }
+        else { $actions.Controls.Add($button) }
+        $buttons.Add($button) | Out-Null
     }
     $copyButton=& $newButton '复制日志'
     $copyButton.Add_Click({
@@ -1126,10 +1335,35 @@ function Show-RelayWindow {
     $logTimer=New-Object Windows.Forms.Timer
     $logTimer.Interval=250
     $logTimer.Add_Tick({ if (!$script:Busy) { & $refreshLog } })
+    $fitContent={
+        if (!$form.IsHandleCreated) { return }
+        $graphics=$form.CreateGraphics()
+        try { $minimumContentHeight=[int][Math]::Ceiling(620*$graphics.DpiY/96) }
+        finally { $graphics.Dispose() }
+        $canvas.AutoScrollMinSize=New-Object Drawing.Size(0,$minimumContentHeight)
+        $contentHeight=[Math]::Max($canvas.ClientSize.Height,$minimumContentHeight)
+        if ($layout.Height -ne $contentHeight) { $layout.Height=$contentHeight }
+    }
+    $canvas.Add_SizeChanged({ & $fitContent })
+    $form.Add_Load({
+        $workArea=[Windows.Forms.Screen]::FromControl($form).WorkingArea
+        $maximumWidth=[Math]::Max(1,$workArea.Width-24)
+        $maximumHeight=[Math]::Max(1,$workArea.Height-24)
+        $form.MinimumSize=New-Object Drawing.Size(
+            ([Math]::Min($form.MinimumSize.Width,$maximumWidth)),
+            ([Math]::Min($form.MinimumSize.Height,$maximumHeight)))
+        $form.Size=New-Object Drawing.Size(
+            ([Math]::Min($form.Width,$maximumWidth)),
+            ([Math]::Min($form.Height,$maximumHeight)))
+        $form.Location=New-Object Drawing.Point(
+            ($workArea.Left+[int](($workArea.Width-$form.Width)/2)),
+            ($workArea.Top+[int](($workArea.Height-$form.Height)/2)))
+        & $fitContent
+    })
     $form.Add_Shown({
         try { Start-LiveMonitor;& $refresh;& $refreshLog }
         catch {
-            $status.Text='状态监测未启动。'
+            $status.Text='状态监测未启动。';$status.ForeColor=$palette.Red
             Add-LiveLog $status.Text
         }
         $timer.Start();$logTimer.Start()
@@ -1139,7 +1373,10 @@ function Show-RelayWindow {
         if ($script:Busy) { $eventArgs.Cancel=$true;return }
         if ($autoDisconnect.Checked) {
             try { $message=Disconnect-Relay;Add-LiveLog ('关闭窗口：'+$message) }
-            catch { $eventArgs.Cancel=$true;$result.Text=$_.Exception.Message;$tabs.SelectedTab=$statePage;return }
+            catch {
+                $eventArgs.Cancel=$true;$operationPanel.Visible=$true
+                $result.ForeColor=$palette.Red;$result.Text=$_.Exception.Message;$tabs.SelectedTab=$statePage;return
+            }
         }
         $timer.Stop();$logTimer.Stop()
     })
@@ -1148,7 +1385,9 @@ function Show-RelayWindow {
     finally {
         $timer.Stop();$logTimer.Stop();$timer.Dispose();$logTimer.Dispose()
         try { Stop-LiveMonitor } catch { }
-        $form.Dispose()
+        $form.Dispose();$tips.Dispose()
+        if ($null -ne $windowIcon) { $windowIcon.Dispose() }
+        foreach ($font in @($fontBase,$fontTitle,$fontStrong,$fontSmall,$fontInput,$fontMono)) { $font.Dispose() }
     }
 }
 

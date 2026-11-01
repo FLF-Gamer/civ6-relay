@@ -1,0 +1,16 @@
+[package]
+name = "civ6-relay-launcher"
+version = "3.3.0-preview"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "Civ6Relay"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -23,7 +23,7 @@ import time
 import uuid
 import zipfile
 
-VERSION = '3.2.5-preview'
+VERSION = '3.3.0-preview'
 MARKER = 'civ6-relay/v3'
 BACKEND = 'easytier'
 ENGINE_VERSION = '2.6.4-civ6.2'

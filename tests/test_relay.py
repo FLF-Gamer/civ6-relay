@@ -132,10 +132,13 @@ class PackageTests(unittest.TestCase):
             (folder/'checksums.json').write_text(json.dumps(hashes))
         for name in ('relayctl.py','install.sh','README.md','client/windows/Start.cmd',
                 'client/windows/Civ6Relay.ps1','client/windows/LiveMonitor.cs','client/windows/README.txt',
+                'client/launcher/Program.cs',
                 'vendor/easytier/licenses/LICENSE.txt','vendor/linux-amd64/licenses/LICENSE.txt',
                 'vendor/sources/wireguard-tools.tar.xz','build/source.txt','scripts/source.py',
                 'tests/source.py','docs/guide.md'):
             path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('public source fixture')
+        self.launcher=b'MZ\x00\x80\xffpublic-launcher-fixture'
+        (self.root/'client/windows/Civ6Relay.exe').write_bytes(self.launcher)
         self.marker='dummy-private-package-marker'
         for name in ('.git/private.txt','.build/common-profile.json'):
             path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(self.marker)
@@ -163,10 +166,13 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(private.read_text(),self.marker)
         with zipfile.ZipFile(template) as archive:
             self.assertIn('LiveMonitor.cs',archive.namelist());self.assertIn('bin/easytier-core.exe',archive.namelist())
+            self.assertEqual(archive.read('Civ6Relay.exe'),self.launcher)
             self.assertNotIn('profile.json',archive.namelist())
-            self.assertNotIn(self.marker,b''.join(archive.read(name) for name in archive.namelist()).decode())
+            self.assertNotIn(self.marker.encode(),b''.join(archive.read(name) for name in archive.namelist()))
         with tarfile.open(server) as archive:
             self.assertIn('civ6-relay/client/windows/LiveMonitor.cs',archive.getnames())
+            self.assertIn('civ6-relay/client/launcher/Program.cs',archive.getnames())
+            self.assertEqual(archive.extractfile('civ6-relay/client/windows/Civ6Relay.exe').read(),self.launcher)
             for name in archive.getnames():
                 self.assertFalse(any(part in ('.git','.build','profile.json','state.json','preferences.json') for part in Path(name).parts))
 
@@ -185,8 +191,11 @@ class PackageTests(unittest.TestCase):
             saved=json.loads(archive.read('profile.json'))
             self.assertEqual(saved['credential_secret'],self.marker);self.assertEqual(saved['version'],packaging.VERSION)
             self.assertIn('LiveMonitor.cs',archive.namelist())
+            self.assertEqual(archive.read('Civ6Relay.exe'),self.launcher)
         base=self.root/'.build'/('civ6-relay-client-'+packaging.VERSION+'-windows-base.zip')
-        with zipfile.ZipFile(base) as archive:self.assertNotIn('profile.json',archive.namelist())
+        with zipfile.ZipFile(base) as archive:
+            self.assertNotIn('profile.json',archive.namelist())
+            self.assertEqual(archive.read('Civ6Relay.exe'),self.launcher)
         self.assertEqual(set(json.loads((output/'SHA256SUMS.json').read_text())),{
             common.name,'civ6-relay-server-'+packaging.VERSION+'-linux-amd64.tar.gz'})
 
@@ -199,6 +208,13 @@ class PackageTests(unittest.TestCase):
                         self.package('--output-dir',str(self.root/'public'))
                     self.assertEqual(list((self.root/'public').iterdir()),[])
                 finally:path.unlink()
+
+    def test_missing_launcher_is_rejected_before_archiving(self):
+        (self.root/'client/windows/Civ6Relay.exe').unlink()
+        output=self.root/'public'
+        with self.assertRaisesRegex(SystemExit,'Windows launcher missing'):
+            self.package('--output-dir',str(output))
+        self.assertFalse(output.exists())
 
     def test_packet_dependency_is_rejected_before_archiving(self):
         (self.root/'vendor/easytier/windows-x86_64/Packet.dll').write_text('excluded dependency fixture')

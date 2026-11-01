@@ -39,3 +39,6 @@ server.toml
 
 /vendor/linux-amd64/wireguard-go
 /vendor/sources/wireguard-go.tar.xz
+
+/client/windows/Civ6Relay.exe
+/client/launcher/target/

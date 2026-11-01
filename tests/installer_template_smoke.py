@@ -129,20 +129,23 @@ def main():
         path.write_text(COMMAND_STUB)
         path.chmod(0o755)
 
-    # A missing runtime must fail before the installer creates an installation.
-    with tempfile.TemporaryDirectory(prefix='civ6-missing-runtime-') as temporary:
-        source = Path(temporary)
-        shutil.copyfile(str(ROOT / 'install.sh'), str(source / 'install.sh'))
-        shutil.copyfile(str(ROOT / 'relayctl.py'), str(source / 'relayctl.py'))
-        (source / 'vendor').symlink_to(ROOT / 'vendor', target_is_directory=True)
-        client = source / 'client/windows'
-        client.mkdir(parents=True)
-        for name in ('Start.cmd', 'Civ6Relay.ps1', 'README.txt'):
-            shutil.copyfile(str(ROOT / 'client/windows' / name), str(client / name))
-        missing = command(['bash', source / 'install.sh', '--endpoint', '8.8.8.8', '--port', '29527'], False)
-        require('LiveMonitor.cs' in missing.stderr, 'Missing runtime was not identified')
-        require(not PROGRAM.exists() and not CONFIG.exists(), 'Missing runtime mutated installation paths')
-    print('PASS missing LiveMonitor.cs is rejected before installation')
+    # Missing client entry points must fail before creating an installation.
+    client_files = ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'LiveMonitor.cs', 'README.txt')
+    for absent in ('Civ6Relay.exe', 'LiveMonitor.cs'):
+        with tempfile.TemporaryDirectory(prefix='civ6-missing-runtime-') as temporary:
+            source = Path(temporary)
+            shutil.copyfile(str(ROOT / 'install.sh'), str(source / 'install.sh'))
+            shutil.copyfile(str(ROOT / 'relayctl.py'), str(source / 'relayctl.py'))
+            (source / 'vendor').symlink_to(ROOT / 'vendor', target_is_directory=True)
+            client = source / 'client/windows'
+            client.mkdir(parents=True)
+            for name in client_files:
+                if name != absent:
+                    shutil.copyfile(str(ROOT / 'client/windows' / name), str(client / name))
+            missing = command(['bash', source / 'install.sh', '--endpoint', '8.8.8.8', '--port', '29527'], False)
+            require(absent in missing.stderr, 'Missing client file was not identified: ' + absent)
+            require(not PROGRAM.exists() and not CONFIG.exists(), 'Missing runtime mutated installation paths')
+    print('PASS missing EXE or live runtime is rejected before installation')
 
     command(['bash', ROOT / 'install.sh', '--endpoint', '8.8.8.8', '--port', '29527'])
     require((PROGRAM / '.civ6-relay-managed').read_text().strip() == 'civ6-relay/v3', 'Installation marker missing')
@@ -152,6 +155,8 @@ def main():
     for name, source in (('easytier-core', 'vendor/easytier/linux-x86_64/easytier-core'),
                          ('wg', 'vendor/linux-amd64/wg')):
         require(digest(PROGRAM / 'bin' / name) == digest(ROOT / source), 'Installed component differs: ' + name)
+    require(digest(PROGRAM / 'client/windows/Civ6Relay.exe') == digest(ROOT / 'client/windows/Civ6Relay.exe'),
+        'Installed launcher differs from source')
     with zipfile.ZipFile(str(PROGRAM / 'client/windows-template.zip')) as archive:
         require('profile.json' not in archive.namelist(), 'Public Windows template contains access information')
         require('bin/Packet.dll' not in archive.namelist(), 'Windows template contains the retired Npcap DLL')
@@ -161,7 +166,9 @@ def main():
                 require(archive.read(name) == path.read_bytes(), 'Template source differs or is missing: ' + name)
         require(archive.read('LiveMonitor.cs') == (ROOT / 'client/windows/LiveMonitor.cs').read_bytes(),
             'Template runtime differs from source')
-    print('PASS actual installer hashes/copies components and includes the exact live runtime in the template')
+        require(archive.read('Civ6Relay.exe') == (ROOT / 'client/windows/Civ6Relay.exe').read_bytes(),
+            'Template launcher differs from source')
+    print('PASS actual installer copies components and includes the exact launcher/runtime in the template')
 
     command(['/usr/local/sbin/civ6-relay', 'status'])
     command(['/usr/local/sbin/civ6-relay', 'bundle'])
@@ -171,6 +178,8 @@ def main():
         require('bin/Packet.dll' not in archive.namelist(), 'Shared Windows export contains the retired Npcap DLL')
         require(archive.read('LiveMonitor.cs') == (ROOT / 'client/windows/LiveMonitor.cs').read_bytes(),
             'Shared Windows export omitted or changed the live runtime')
+        require(archive.read('Civ6Relay.exe') == (ROOT / 'client/windows/Civ6Relay.exe').read_bytes(),
+            'Shared Windows export omitted or changed the launcher')
         profile = json.loads(archive.read('profile.json').decode('utf-8'))
         require(profile.get('schema') == 4 and profile.get('access_mode') == 'shared', 'Shared profile shape differs')
         require(not any(name in profile for name in ('instance_id', 'player', 'client_ip', 'endpoint', 'port', 'network_secret')),

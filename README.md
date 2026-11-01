@@ -1,4 +1,4 @@
-# 文明6联机助手 3.2.5-preview
+# 文明6联机助手 3.3.0-preview
 
 让 Windows 玩家通过虚拟局域网联机：优先玩家直连，无法直连时由自己的 Linux 服务器中继。文明6中选择 **多人游戏 → 局域网**。
 
@@ -20,8 +20,8 @@ Release 完整安装包已包含服务端和 Windows 组件，推荐用于部署
 在服务器上执行：
 
 ```bash
-curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.2.5-preview/civ6-relay-server-3.2.5-preview-linux-amd64.tar.gz
-tar -xzf civ6-relay-server-3.2.5-preview-linux-amd64.tar.gz
+curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.3.0-preview/civ6-relay-server-3.3.0-preview-linux-amd64.tar.gz
+tar -xzf civ6-relay-server-3.3.0-preview-linux-amd64.tar.gz
 cd civ6-relay
 sudo bash install.sh --endpoint SERVER_IP --port 9527
 sudo civ6-relay status
@@ -60,7 +60,7 @@ sudo civ6-relay bundle --output /root/windows-new.zip
 
 适用于 Windows 10/11 x64。
 
-1. 完整解压 `windows.zip`，双击 `Start.cmd`，允许管理员权限。
+1. 完整解压 `windows.zip`，双击 `Civ6Relay.exe`，允许管理员权限。请在解压后的文件夹启动，保留同目录的其他文件。
 2. 填写自己的玩家昵称、服务器 IP 和端口，点击“连接”。支持中文昵称。
 3. 所有玩家连接后，在文明6中选择“多人游戏 → 局域网”，由一人建房，其他人刷新列表并加入。
 4. 结束后点击“断开”。默认关闭窗口也会断开，可取消“关闭窗口时自动断开”。

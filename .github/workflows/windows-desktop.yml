@@ -1,0 +1,40 @@
+name: Windows desktop
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      RUSTUP_TOOLCHAIN: 1.95.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare Rust
+        shell: pwsh
+        run: rustup toolchain install 1.95.0 --profile minimal
+      - name: Build native launcher twice
+        shell: pwsh
+        run: python scripts/build-launcher.py --native --verify-reproducible
+      - name: Exercise EXE startup
+        shell: powershell
+        run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tests/windows-launcher-smoke.ps1
+      - name: Render and exercise production UI
+        shell: powershell
+        run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tests/windows-ui-smoke.ps1
+      - name: Save Windows results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-desktop
+          include-hidden-files: true
+          path: |
+            .build/windows-smoke/
+            .build/windows-ui-smoke/
+            .build/launcher-out/build.json
+            client/windows/Civ6Relay.exe
+          if-no-files-found: warn
