@@ -7,7 +7,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:PackageRoot = $PSScriptRoot
-$script:ClientVersion = '3.5.3-preview'
+$script:ClientVersion = '3.5.2-preview'
 $script:RepositoryUrl = 'https://github.com/FLF-Gamer/civ6-relay'
 $script:ManagedRoot = Join-Path $env:ProgramData 'Civ6RelayMesh'
 $script:ManagedConfig = Join-Path $script:ManagedRoot 'network.toml'
