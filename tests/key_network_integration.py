@@ -131,7 +131,7 @@ def main():
             command('ip','addr','add','192.0.2.1/24','dev','keybr')
             command('ip','addr','add','192.0.2.2/24','dev','keybr')
             command('ip','link','set','keybr','up')
-            for index,name in enumerate(('key-a','key-b','key-other'),10):
+            for index,name in enumerate(('key-a','key-b','key-other','key-other-b'),10):
                 command('ip','netns','add',name);namespaces.append(name)
                 command('ip','link','set','lo','up',ns=name)
                 host='kh'+str(index);guest='kg'+str(index)
@@ -169,9 +169,14 @@ def main():
             b=post('/v1/connect',dict(device_id=device(),key=key))[1]
             assert post('/v1/connect',dict(device_id=device(),key=key))[1]['error']=='ROOM_FULL'
             other_key=post('/v1/keys',dict(device_id=device()))[1]['key']
+            config['hours']=180/3600
             other=post('/v1/connect',dict(device_id=device(),key=other_key))[1]
+            other_b=post('/v1/connect',dict(device_id=device(),key=other_key))[1]
             clients={name:start_client(folder,name,access,processes)
-                     for name,access in (('key-a',a),('key-b',b),('key-other',other))}
+                     for name,access in (('key-a',a),('key-b',b),('key-other',other),('key-other-b',other_b))}
+            core_pid=service.backend.process.pid
+            assert len(service.backend.instances)==2
+            print('PASS two rooms share one core process',flush=True)
             wait_for('same Key discovers peer',lambda:peer('key-a','key-b'))
             wait_for('same Key establishes P2P',lambda:peer('key-a','key-b')['path_len']==1,45)
             wait_for('automatic IP allocation',lambda:peer('key-a','key-b').get('ipv4'))
@@ -185,6 +190,11 @@ def main():
             broadcast=str(ipaddress.ip_network(a['profile']['network']).broadcast_address)
             command('python3','-c',PROBE,broadcast,ns='key-a')
             print('PASS same Key discovery broadcast and UDP replies',flush=True)
+            wait_for('second room establishes P2P',lambda:peer('key-other','key-other-b') and peer('key-other','key-other-b')['path_len']==1,45)
+            processes.append(subprocess.Popen(['ip','netns','exec','key-other-b','python3','-u','-c',ECHO],
+                                  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL))
+            other_ip=peer('key-other','key-other-b')['ipv4'].split('/')[0]
+            wait_for('second room game UDP',lambda:command('python3','-c',PROBE,other_ip,ns='key-other').returncode==0)
             post('/v1/release',{},b['session_token'])
             wait_for('release revokes an established P2P peer',lambda:not peer('key-a','key-b'),30)
             denied=command('python3','-c',PROBE,ip,ns='key-a',check=False)
@@ -199,7 +209,7 @@ def main():
             command('python3','-c',PROBE,ip,ns='key-a')
             # Keep both P2P clients and the unrelated group online until real expiry.
             while time.time()<a['expires_at']+1:
-                for access in (a,b,other):
+                for access in (a,b,other,other_b):
                     post('/v1/renew',{},access['session_token'])
                 service.maintain()
                 time.sleep(.5)
@@ -209,6 +219,11 @@ def main():
             wait_for('native credential expiry removes an existing P2P path',lambda:not peer('key-a','key-b'),65)
             assert command('python3','-c',PROBE,ip,ns='key-a',check=False).returncode!=0
             print('PASS actual expiry, reconnect denial, room cleanup',flush=True)
+            assert service.backend.process.pid==core_pid
+            assert len(service.backend.instances)==1
+            assert post('/v1/renew',{},other['session_token'])[0]==200
+            command('python3','-c',PROBE,other_ip,ns='key-other')
+            print('PASS room expiry preserves the core process and other room game UDP',flush=True)
         finally:
             if api:
                 api.shutdown();api.server_close()

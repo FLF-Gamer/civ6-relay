@@ -9,6 +9,7 @@ import argparse
 import base64
 import fcntl
 import ipaddress
+import http.client
 import json
 import os
 from pathlib import Path
@@ -48,16 +49,16 @@ class Runner:
         return result
 
 class Paths:
-    def __init__(self, root=Path('/')):
+    def __init__(self, root=Path('/'), state_dir=None, program=None):
         self.root = Path(root)
-        self.state_dir = self.at('/etc/civ6-relay')
+        self.state_dir = Path(state_dir) if state_dir is not None else self.at('/etc/civ6-relay')
         self.state = self.state_dir / 'state.json'
         self.clients = self.state_dir / 'clients'
         self.exports = self.state_dir / 'exports'
         self.config = self.state_dir / 'server.toml'
         self.credentials = self.state_dir / 'credentials.json'
         self.unit = self.at('/etc/systemd/system/' + SERVICE)
-        self.program = self.at('/opt/civ6-relay')
+        self.program = Path(program) if program is not None else self.at('/opt/civ6-relay')
         self.lock = self.at('/run/civ6-relay.lock')
     def at(self, name):
         return self.root / name.lstrip('/')
@@ -111,7 +112,8 @@ def public_ipv4(value):
         raise RelayError('服务端地址必须是公网 IPv4。')
     return str(addr)
 
-def settings(endpoint, network=DEFAULT_NETWORK, port=51820, mtu=1360):
+def settings(endpoint, network=DEFAULT_NETWORK, port=9527, mtu=1360,
+             api_port=15888, key_required=False, port_start=20000, max_rooms=4, max_players=6):
     endpoint = public_ipv4(endpoint)
     try:
         net = ipaddress.IPv4Network(network, strict=True)
@@ -124,9 +126,24 @@ def settings(endpoint, network=DEFAULT_NETWORK, port=51820, mtu=1360):
         raise RelayError('服务器端口须为 1024–65535，且不能占用本地管理端口。')
     if not 1280 <= int(mtu) <= 1400:
         raise RelayError('MTU 须为 1280–1400。')
+    if not 1<=int(max_rooms)<=32 or not 1<=int(max_players)<=16 or not 1024<=int(port_start)<=65536-int(max_rooms):
+        raise RelayError('房间数量、人数或端口范围无效。')
+    room_ports=set(range(int(port_start),int(port_start)+int(max_rooms)))
+    management={RPC_PORT}
+    if room_ports & management or int(port) in management or int(api_port) in management:
+        raise RelayError('监听端口与本机管理端口冲突。')
+    if not 1024<=int(api_port)<=65535 or int(api_port)==int(port) or int(api_port) in room_ports:
+        raise RelayError('HTTP 接入端口须为独立的 1024–65535 端口。')
     return {'marker': MARKER, 'version': VERSION, 'backend': BACKEND,
             'routing_mode': 'lan-mesh', 'endpoint': endpoint, 'network': str(net),
-            'port': int(port), 'mtu': int(mtu), 'clients': {}, 'firewall_owned': []}
+            'port': int(port), 'mtu': int(mtu), 'api_port':int(api_port),
+            'key_required':bool(key_required),'port_start':int(port_start),
+            'max_rooms':int(max_rooms),'max_players':int(max_players),
+            'clients': {}, 'firewall_owned': []}
+
+def public_ports(state):
+    ports=range(state.get('port_start',20000),state.get('port_start',20000)+state.get('max_rooms',4)) if state.get('key_required') else (state['port'],)
+    return [(port,protocol) for port in ports for protocol in ('udp','tcp')]+[(state.get('api_port',15888),'tcp')]
 
 def next_address(state):
     occupied = {entry['ip'] for entry in state['clients'].values()}
@@ -179,7 +196,7 @@ def client_profile(state, name, credential):
 def unit_config():
     return '''# Managed by civ6-relay/v3
 [Unit]
-Description=Civ6 private LAN discovery and fallback relay
+Description=Heping LAN assistant
 Wants=network-online.target
 After=network-online.target firewalld.service
 Requires=firewalld.service
@@ -190,17 +207,17 @@ Type=simple
 Environment=PYTHONIOENCODING=utf-8
 WorkingDirectory=/etc/civ6-relay
 ExecStartPre=/usr/bin/python3 /opt/civ6-relay/relayctl.py service-prepare
-ExecStart=/opt/civ6-relay/bin/easytier-core -c /etc/civ6-relay/server.toml --disable-env-parsing --rpc-portal 127.0.0.1:15887
+ExecStart=/usr/bin/python3 /opt/civ6-relay/keyservice.py --state-dir /etc/civ6-relay serve
 Restart=on-failure
 RestartSec=5
-TimeoutStopSec=15
+TimeoutStopSec=30
 KillSignal=SIGINT
+KillMode=control-group
 UMask=0077
 NoNewPrivileges=true
 ProtectHome=true
 PrivateTmp=true
 LimitNOFILE=65536
-# The core prints its effective config at startup; keep secrets out of the journal.
 StandardOutput=null
 StandardError=null
 
@@ -243,10 +260,10 @@ class Relay:
         if not re.fullmatch(r'[a-zA-Z0-9_-]+', zone):
             raise RelayError('无法确定防火墙区域。')
         state['wan_zone'] = zone
-        for protocol in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
-            with socket.socket(socket.AF_INET, protocol) as probe:
+        for port,protocol in public_ports(state):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM if protocol=='tcp' else socket.SOCK_DGRAM) as probe:
                 try:
-                    probe.bind(('0.0.0.0', state['port']))
+                    probe.bind(('0.0.0.0', port))
                 except OSError:
                     raise RelayError('服务器端口已占用。') from None
         with socket.socket() as probe:
@@ -258,8 +275,8 @@ class Relay:
         args = ['firewall-cmd'] + (['--permanent'] if permanent else [])
         return self.r.run(args + ['--zone=' + state['wan_zone'], '--' + action + '-port=' + port], check=False)
     def setup_firewall(self, state):
-        for protocol in ('udp', 'tcp'):
-            port = str(state['port']) + '/' + protocol
+        for number,protocol in public_ports(state):
+            port = str(number) + '/' + protocol
             for permanent in (True, False):
                 query = self.firewall(state, 'query', port, permanent)
                 if query.returncode == 0:
@@ -274,8 +291,19 @@ class Relay:
     def service_prepare(self, state):
         if self.cmd('firewall-cmd', '--state', check=False).returncode:
             raise RelayError('防火墙未运行。')
-        for protocol in ('udp', 'tcp'):
-            if self.firewall(state, 'query', str(state['port']) + '/' + protocol, False).returncode:
+        path=self.p.state_dir/'service.json'
+        if path.is_file():
+            config=json.loads(path.read_text(encoding='utf-8'))
+            validated=settings(config['endpoint'],state['network'],config['free_mesh_port'],state['mtu'],
+                config['api_port'],config.get('key_required',False),config.get('port_start',20000),
+                config.get('max_rooms',4),config.get('max_players',6))
+            for name in ('endpoint','port','api_port','key_required','port_start','max_rooms','max_players'):
+                state[name]=validated[name]
+            self.save(state)
+            atomic_write(self.p.config, server_config(state))
+            self.setup_firewall(state)
+        for number,protocol in public_ports(state):
+            if self.firewall(state, 'query', str(number) + '/' + protocol, False).returncode:
                 raise RelayError('组网监听端口没有放行。')
     def init(self, state, names):
         if self.p.state_dir.exists():
@@ -291,29 +319,40 @@ class Relay:
         state['public_key'] = valid_key(self.cmd(wg, 'pubkey', data=state['private_key'] + '\n').stdout.strip())
         self.save(state)
         atomic_write(self.p.config, server_config(state))
+        atomic_write(self.p.state_dir/'service.json',json.dumps(dict(
+            endpoint=state['endpoint'],bin_dir=str(self.p.program/'bin'),
+            listen='0.0.0.0',api_port=state['api_port'],key_required=state['key_required'],
+            allow_generate=True,hours=48,max_rooms=state['max_rooms'],max_players=state['max_players'],
+            port_start=state['port_start'],free_mesh_port=state['port'],
+            free_profile=str(self.p.state_dir/'common-profile.json'),shared_config=str(self.p.config)),indent=2)+'\n')
         atomic_write(self.p.unit, unit_config(), 0o644)
         try:
             self.setup_firewall(state)
             self.cmd('systemctl', 'daemon-reload')
             self.cmd('systemctl', 'enable', '--now', SERVICE)
-            for attempt in range(30):
+            for attempt in range(50):
+                connection=http.client.HTTPConnection('127.0.0.1',state['api_port'],timeout=1)
                 try:
-                    self.cli(state, 'node', 'info')
+                    connection.request('GET','/v1/version')
+                    response=connection.getresponse()
+                    if response.status!=200 or json.loads(response.read().decode())['server_version']!=VERSION:
+                        raise RelayError('HTTP 接入服务返回了无效状态。')
                     break
-                except RelayError:
-                    if attempt == 29:
-                        raise
-                    time.sleep(0.3)
+                except (OSError,ValueError,KeyError,http.client.HTTPException,RelayError):
+                    if attempt == 49:
+                        raise RelayError('HTTP 接入服务未就绪，请查看服务状态。') from None
+                    time.sleep(0.2)
+                finally:
+                    connection.close()
             state['phase'] = 'ready'
             self.save(state)
-            for name in names:
+            for name in names if not state['key_required'] else []:
                 self.add(name)
-            self.common_profile()
         except Exception:
             # Keep recoverable state if rollback itself fails.
             self.uninstall(state=state, rollback=True)
             raise
-        print('虚拟局域网协调及中继服务已启动。游戏请选择“局域网”。')
+        print('联机服务已启动；客户端接入端口：'+str(state['api_port'])+'。游戏请选择“局域网”。')
     def add(self, name, ttl_days=365):
         name = client_name(name)
         state = self.load()
@@ -413,10 +452,12 @@ class Relay:
         return destination
     def status(self):
         state = self.load()
+        config_path=self.p.state_dir/'service.json'
+        config=json.loads(config_path.read_text(encoding='utf-8')) if config_path.is_file() else state
         active = self.cmd('systemctl', 'is-active', SERVICE, check=False).stdout.strip()
         print('服务：' + active + '；模式：P2P 优先，失败经服务器中继；虚拟网段：' + state['network'])
-        print('客户端：所有玩家共用同一个通用 ZIP，虚拟地址自动分配。')
-        if active == 'active':
+        print('HTTP 接入端口：'+str(config.get('api_port',15888))+'；Key 模式：'+('开启' if config.get('key_required') else '关闭'))
+        if active == 'active' and not config.get('key_required'):
             for route in self.cli(state, 'route'):
                 if route.get('ipv4') and route.get('path_len', 0) > 0:
                     print('{} {} 已接入'.format(route.get('hostname', ''), route['ipv4']))
@@ -450,7 +491,12 @@ def parser():
     for name in ('init', 'plan'):
         sub = commands.add_parser(name)
         sub.add_argument('--endpoint', required=True)
-        sub.add_argument('--port', type=int, default=51820)
+        sub.add_argument('--port', type=int, default=9527)
+        sub.add_argument('--api-port', type=int, default=15888)
+        sub.add_argument('--enable-key', action='store_true')
+        sub.add_argument('--port-start',type=int,default=20000)
+        sub.add_argument('--max-rooms',type=int,default=4)
+        sub.add_argument('--max-players',type=int,default=6)
         sub.add_argument('--network', default=DEFAULT_NETWORK)
         sub.add_argument('--mtu', type=int, default=1360)
         sub.add_argument('--client', action='append')
@@ -472,7 +518,8 @@ def main(argv=None):
         ap.error('需要指定命令')
     os.umask(0o077)
     if args.command in ('init', 'plan'):
-        state = settings(args.endpoint, args.network, args.port, args.mtu)
+        state = settings(args.endpoint, args.network, args.port, args.mtu,
+            args.api_port,args.enable_key,args.port_start,args.max_rooms,args.max_players)
         names = [client_name(n) for n in (args.client or [])]
         if len(names) != len(set(names)):
             raise RelayError('凭据编号不能重复。')
@@ -481,6 +528,7 @@ def main(argv=None):
         print('监听 TCP/UDP 同一端口；客户端仅添加虚拟网段路由：' + state['network'])
         print('服务器不建 TUN、不设默认路由、不改 DNS、不启用出口转发。')
         print('客户端只填写昵称、服务器 IP 和端口；游戏 IP 自动分配，所有玩家共用同一个 ZIP。')
+        print('HTTP 接入端口：'+str(state['api_port'])+'；Key 模式：'+('开启' if state['key_required'] else '关闭'))
         return 0
     if sys.platform != 'linux' or os.geteuid() != 0:
         raise RelayError('此管理命令须在 Linux 服务器上以 root/sudo 执行。')

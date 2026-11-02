@@ -285,7 +285,7 @@ $script:UiSmokeTimer.Add_Tick({
                 $window.UpdateLayout()
                 # RFC 5737 documentation address; the mocked action never contacts it.
                 (Get-UiSmokeElement $window 'ServerInput').Text='203.0.113.10'
-                (Get-UiSmokeElement $window 'PortInput').Text='443'
+                (Get-UiSmokeElement $window 'PortInput').Text='15888'
                 Invoke-UiSmokeClick $window 'NavSettings'
                 Invoke-UiSmokeClick $window 'ServerVersionButton'
             }

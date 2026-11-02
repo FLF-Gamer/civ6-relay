@@ -6,7 +6,6 @@
     "aes-gcm",
     "zstd"
   ],
-  "source_and_patch_sha256": "81197769ec286605ad3f9a28f75dfcd5a2131b4da1eecc5245b4be269920c520",
   "source_archive": {
     "file": "EasyTier-2.6.4-source.tar.gz",
     "upstream_commit": "8428a89d2dabc94c97d370ec607c6ca142473626",
@@ -41,7 +40,7 @@
   },
   "patch": {
     "file": "EasyTier-fast-failover.patch",
-    "sha256": "bb6073b1eb2e7bcbdd3e9425e16fcf9f6d04c4f28b8f51d63fb72347cb1862c9"
+    "sha256": "9e422e222b9e6f9f15edc8d08c26016987e178ca13de29ed7ee191b4a36980b6"
   },
   "windows_runtime_dependencies": [
     "Windows 10/11 system libraries",
@@ -101,10 +100,20 @@
       ]
     }
   },
-  "validation": {
-    "windows_release_build": "passed; scripts/build-mesh-fork.py --platform windows --skip-image",
-    "packet_runtime_imports": "none in both PE import tables",
-    "retained_source_bytes": "identical to original upstream archive",
-    "native_version": "2.6.4-civ6.2 unchanged"
-  }
+  "windows_source_and_patch_sha256": "81197769ec286605ad3f9a28f75dfcd5a2131b4da1eecc5245b4be269920c520",
+  "linux_source_and_patch_sha256": "1b7db795ebcef35200e17be0d3716aad82e64489e6650c8963835dbf927616ff",
+  "windows_patch_sha256": "bb6073b1eb2e7bcbdd3e9425e16fcf9f6d04c4f28b8f51d63fb72347cb1862c9",
+  "linux_binaries": {
+    "easytier-core": {
+      "sha256": "e883d52a9215927a9075b52eb2494d03aa88259c17e79b4c1d64251ae15a9743"
+    },
+    "easytier-cli": {
+      "sha256": "a65a67f3e1b7d003099032ce9f046e68a8eb29f5104f79eddf7afbe0c8bbf6f9"
+    }
+  },
+  "linux_cli_commands": [
+    "instance list",
+    "instance start --config PATH",
+    "instance stop --id UUID"
+  ]
 }

@@ -17,7 +17,6 @@ import secrets
 import signal
 import socketserver
 import sqlite3
-import ssl
 import subprocess
 import threading
 import time
@@ -48,11 +47,13 @@ def device_id(value):
 
 
 class MeshRooms:
-    """Manage a bounded set of per-room core processes."""
+    """Manage isolated network instances in one core process."""
     def __init__(self, config, root, runner=None):
         self.config, self.root = config, Path(root)
         self.runner = runner or relay.Runner()
-        self.processes = {}
+        self.process = None
+        self.instances = set()
+        self.shared_id = None
         self.bin = Path(config['bin_dir'])
 
     def paths(self, room):
@@ -72,12 +73,18 @@ class MeshRooms:
 
     def cli(self, room, *args):
         result = self.runner.run([self.bin / 'easytier-cli', '-p',
-            '127.0.0.1:'+str(room['rpc_port']), '-i', room['id'], '-o', 'json']+list(args))
+            '127.0.0.1:'+str(relay.RPC_PORT), '-i', room['id'], '-o', 'json']+list(args))
+        return json.loads(result.stdout)
+
+    def manage(self, *args):
+        result = self.runner.run([self.bin / 'easytier-cli', '-p',
+            '127.0.0.1:'+str(relay.RPC_PORT), '-o', 'json', 'instance']+list(args))
         return json.loads(result.stdout)
 
     def ensure(self, room):
-        process = self.processes.get(room['id'])
-        if process is not None and process.poll() is None:
+        self.start()
+        identifier = uuid.UUID(room['id']).hex
+        if identifier in self.instances:
             return
         state = self.state(room)
         folder = self.paths(room)
@@ -85,21 +92,63 @@ class MeshRooms:
             relay.toml_string('/etc/civ6-relay/credentials.json'),
             relay.toml_string(str(folder / 'credentials.json')))
         relay.atomic_write(folder / 'server.toml', config)
-        process = subprocess.Popen([str(self.bin / 'easytier-core'), '-c', str(folder/'server.toml'),
-            '--disable-env-parsing', '--rpc-portal', '127.0.0.1:'+str(room['rpc_port'])],
+        self.instances.add(identifier)
+        try:
+            self.manage('start', '--config', str(folder/'server.toml'))
+            self.wait_ready(room)
+        except Exception:
+            self.stop(room)
+            raise
+
+    def start(self, config=None):
+        if self.process is not None and self.process.poll() is None:
+            return
+        self.instances.clear()
+        command = [str(self.bin / 'easytier-core'), '--daemon', '--disable-env-parsing',
+            '--rpc-portal', '127.0.0.1:'+str(relay.RPC_PORT), '--console-log-level', 'off']
+        if config is not None:
+            command += ['-c', str(config)]
+        self.process = subprocess.Popen(command,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.processes[room['id']] = process
         deadline = time.monotonic()+5
         while time.monotonic() < deadline:
-            if process.poll() is not None:
+            if self.process.poll() is not None:
+                break
+            try:
+                self.instances.update(uuid.UUID(value).hex for value in self.manage('list')['instances'])
+                return
+            except (relay.RelayError, ValueError):
+                time.sleep(.1)
+        self.close()
+        raise AccessError('ROOM_START_FAILED', '组网服务暂时无法启动，请稍后重试。', 503)
+
+    def wait_ready(self, room):
+        deadline = time.monotonic()+5
+        while time.monotonic() < deadline:
+            if self.process.poll() is not None:
                 break
             try:
                 self.cli(room, 'route')
                 return
             except (relay.RelayError, ValueError):
                 time.sleep(.1)
-        self.stop(room)
         raise AccessError('ROOM_START_FAILED', '组网服务暂时无法启动，请稍后重试。', 503)
+
+    def ensure_shared(self):
+        if self.shared_id is not None and self.process is not None and self.process.poll() is None:
+            return
+        folder = Path(self.config['shared_config']).parent
+        state = json.loads((folder/'state.json').read_text(encoding='utf-8'))
+        room = dict(id=state['instance_id'], rpc_port=relay.RPC_PORT)
+        self.start(Path(self.config['shared_config']))
+        paths = relay.Paths(state_dir=folder, program=self.bin.parent)
+        try:
+            self.wait_ready(room)
+            relay.Relay(paths, self.runner).common_profile()
+            self.shared_id = room['id']
+        except Exception:
+            self.close()
+            raise
 
     def grant(self, room, remaining):
         self.ensure(room)
@@ -121,7 +170,13 @@ class MeshRooms:
         self.cli(room, 'credential', 'revoke', credential)
 
     def stop(self, room):
-        process = self.processes.pop(room['id'], None)
+        identifier = uuid.UUID(room['id']).hex
+        if self.process is not None and self.process.poll() is None and identifier in self.instances:
+            self.manage('stop', '--id', room['id'])
+        self.instances.discard(identifier)
+
+    def close(self):
+        process = self.process
         if process is not None and process.poll() is None:
             process.send_signal(signal.SIGINT)
             try:
@@ -129,10 +184,9 @@ class MeshRooms:
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
-
-    def close(self):
-        for identifier in list(self.processes):
-            self.stop({'id': identifier})
+        self.process = None
+        self.instances.clear()
+        self.shared_id = None
 
 
 class KeyService:
@@ -215,7 +269,7 @@ class KeyService:
         pool = ipaddress.ip_network(self.config.get('subnet','10.231.0.0/16'))
         network = ipaddress.IPv4Network((int(pool.network_address)+slot*256,24))
         room.update(activated_at=now, expires_at=now+int(self.config.get('hours',48)*3600),
-                    port=start+slot, rpc_port=self.config.get('rpc_start',21100)+slot, network=str(network))
+                    port=start+slot, rpc_port=relay.RPC_PORT, network=str(network))
         self.backend.ensure(room)
         self.db.execute('UPDATE rooms SET activated_at=?,expires_at=?,port=?,rpc_port=?,network=? WHERE id=?',
             (now,room['expires_at'],room['port'],room['rpc_port'],room['network'],room['id']))
@@ -224,7 +278,7 @@ class KeyService:
     def join(self, key, device):
         device = device_id(device)
         if not self.config.get('key_required',False):
-            profile = json.loads((self.root/'free-profile.json').read_text(encoding='utf-8'))
+            profile = json.loads(Path(self.config.get('free_profile',str(self.root/'free-profile.json'))).read_text(encoding='utf-8'))
             if profile['expires_at'] <= self.now():
                 raise AccessError('SERVER_CONFIGURATION', '服务器接入配置已过期，请联系服务器提供者。',503)
             return dict(profile=profile, endpoint=self.config['endpoint'], port=self.config['free_mesh_port'],
@@ -298,6 +352,10 @@ class KeyService:
 
     def maintain(self):
         with self.lock:
+            if not self.config.get('key_required',False):
+                if self.config.get('shared_config'):
+                    self.backend.ensure_shared()
+                return
             now = self.now()
             for row in self.db.execute('SELECT * FROM rooms WHERE port IS NOT NULL AND expires_at<=?',(now,)).fetchall():
                 room = dict(row)
@@ -311,11 +369,11 @@ class KeyService:
                 self.db.execute('DELETE FROM sessions WHERE token_hash=?',(session['token_hash'],))
             # Discard unactivated Keys after seven days.
             self.db.execute('DELETE FROM rooms WHERE activated_at IS NULL AND created_at<?',(now-7*86400,))
+            for row in self.db.execute('SELECT * FROM rooms WHERE port IS NOT NULL AND expires_at>?',(now,)).fetchall():
+                self.backend.ensure(dict(row))
 
     def recover(self):
         self.maintain()
-        for row in self.db.execute('SELECT * FROM rooms WHERE port IS NOT NULL').fetchall():
-            self.backend.ensure(dict(row))
 
     def close(self):
         with self.lock:
@@ -411,7 +469,7 @@ class ApiHandler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--state-dir',type=Path,default=Path('/var/lib/civ6-relay-keys'))
+    parser.add_argument('--state-dir',type=Path,default=Path('/etc/civ6-relay'))
     sub = parser.add_subparsers(dest='action')
     init = sub.add_parser('init')
     init.add_argument('--endpoint',required=True)
@@ -423,10 +481,8 @@ def main():
     init.add_argument('--free-profile',type=Path)
     init.add_argument('--free-mesh-port',type=int,default=9527)
     serve = sub.add_parser('serve')
-    serve.add_argument('--listen',default='127.0.0.1')
-    serve.add_argument('--port',type=int,default=15888)
-    serve.add_argument('--cert',type=Path)
-    serve.add_argument('--cert-key',type=Path)
+    serve.add_argument('--listen')
+    serve.add_argument('--port',type=int)
     args = parser.parse_args()
     os.umask(0o077)
     relay.private_dir(args.state_dir)
@@ -437,7 +493,7 @@ def main():
         relay.public_ipv4(args.endpoint)
         if (not 1<=args.max_rooms<=32 or not 1<=args.max_players<=16 or
             not 1024<=args.port_start<=65536-args.max_rooms or
-            set(range(args.port_start,args.port_start+args.max_rooms)) & set(range(21100,21100+args.max_rooms))):
+            relay.RPC_PORT in range(args.port_start,args.port_start+args.max_rooms)):
             parser.error('房间数量、人数或端口范围无效。')
         free_profile=args.free_profile or Path('/etc/civ6-relay/common-profile.json')
         if args.free_profile and not free_profile.is_file():
@@ -446,7 +502,7 @@ def main():
             parser.error('Key 模式默认关闭，请先部署免费服务器，或用 --free-profile 指定其共享配置。')
         config=dict(endpoint=args.endpoint,bin_dir=str(args.bin_dir.resolve()),key_required=args.enable_key,
                     allow_generate=True,hours=48,max_players=args.max_players,max_rooms=args.max_rooms,
-                    port_start=args.port_start,rpc_start=21100,free_mesh_port=args.free_mesh_port)
+                    port_start=args.port_start,free_mesh_port=args.free_mesh_port)
         if free_profile.is_file():
             profile=json.loads(free_profile.read_text(encoding='utf-8'))
             if profile.get('schema')!=4 or profile.get('access_mode')!='shared':
@@ -457,17 +513,10 @@ def main():
         return
     if args.action!='serve':
         parser.error('需要 init 或 serve')
-    if (args.cert is None)!=(args.cert_key is None):
-        parser.error('需要同时指定证书和私钥。')
-    if not args.cert and not ipaddress.ip_address(args.listen).is_loopback:
-        parser.error('公网接口必须使用有效 TLS 证书；反向代理请连接回环地址。')
-    service=KeyService(json.loads(path.read_text(encoding='utf-8')),args.state_dir)
-    service.recover()
-    server=ApiServer((args.listen,args.port),service)
-    if args.cert:
-        context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER if hasattr(ssl,'PROTOCOL_TLS_SERVER') else ssl.PROTOCOL_TLS)
-        context.load_cert_chain(str(args.cert),str(args.cert_key))
-        server.socket=context.wrap_socket(server.socket,server_side=True)
+    config=json.loads(path.read_text(encoding='utf-8'))
+    service=KeyService(config,args.state_dir)
+    server=None
+    maintainer=None
     stop=threading.Event()
     def maintenance():
         while not stop.wait(1):
@@ -475,19 +524,26 @@ def main():
                 service.maintain()
             except Exception:
                 print('会话维护失败，将在下次重试。',flush=True)
-    maintainer=threading.Thread(target=maintenance,daemon=True)
-    maintainer.start()
     def shutdown(signum,frame):
         stop.set()
+        if server is None:
+            raise SystemExit(0)
         threading.Thread(target=server.shutdown,daemon=True).start()
     signal.signal(signal.SIGTERM,shutdown)
     signal.signal(signal.SIGINT,shutdown)
     try:
+        service.recover()
+        server=ApiServer((args.listen or config.get('listen','0.0.0.0'),
+                          args.port if args.port is not None else config.get('api_port',15888)),service)
+        maintainer=threading.Thread(target=maintenance,daemon=True)
+        maintainer.start()
         server.serve_forever(poll_interval=.2)
     finally:
         stop.set()
-        server.server_close()
-        maintainer.join()
+        if server is not None:
+            server.server_close()
+        if maintainer is not None:
+            maintainer.join()
         service.close()
 
 

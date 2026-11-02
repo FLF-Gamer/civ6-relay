@@ -12,6 +12,7 @@ for command_name in python3 ip firewall-cmd systemctl; do
   command -v "$command_name" >/dev/null 2>&1 || { echo "缺少依赖：$command_name" >&2; exit 1; }
 done
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 6) else 1)'
+[[ -f "$source_dir/keyservice.py" ]] || { echo '缺少服务端文件：keyservice.py' >&2; exit 1; }
 python3 "$source_dir/relayctl.py" plan "$@"
 if [[ $(uname -m) != x86_64 ]] || [[ ! -d /run/systemd/system ]]; then
   echo '此发布包需要 Linux x86_64 和 systemd。' >&2

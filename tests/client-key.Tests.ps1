@@ -50,7 +50,7 @@ public sealed class KeyHttpFixture : IDisposable {
 '@
 $fixture = New-Object KeyHttpFixture
 try {
-    Assert ((Get-KeyServiceUrl 'relay.example.com' '443') -eq 'https://relay.example.com:443') 'Public server must use HTTPS'
+    Assert ((Get-KeyServiceUrl 'relay.example.com' '15888') -eq 'http://relay.example.com:15888') 'Public server URL is incorrect'
     $script:TestPreferences = New-ClientPreferences '测试玩家' '127.0.0.1' ([string]$fixture.Port)
     function Get-ClientPreferences { return $script:TestPreferences }
     Assert (Test-UseServerAccess $script:TestPreferences '') 'A universal package must request access from the chosen server'
@@ -115,7 +115,7 @@ try {
     Open-ProjectPage 'Repository'
     Open-ProjectPage 'Releases'
     Assert ($script:OpenedUrls[0] -eq 'https://github.com/FLF-Gamer/civ6-relay') 'Repository link is incorrect'
-    Assert ($script:OpenedUrls[1] -eq 'https://github.com/FLF-Gamer/civ6-relay/releases') 'Update link must include preview releases'
+    Assert ($script:OpenedUrls[1] -eq 'https://github.com/FLF-Gamer/civ6-relay/releases') 'Update link is incorrect'
     $script:Stopped = 0
     $script:Owned = [pscustomobject]@{Id=12345;StartTime=[DateTime]::UtcNow}
     function Get-OwnRelayProcess { return $script:Owned }

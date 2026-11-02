@@ -573,3 +573,79 @@
              }
          }
      }
+--- a/easytier/src/easytier-cli.rs
++++ b/easytier/src/easytier-cli.rs
+@@ -33,0 +34 @@
++        config::{ConfigLoader, TomlConfigLoader},
+@@ -70 +71,2 @@
+-                ListNetworkInstanceMetaRequest, ListNetworkInstanceRequest, WebClientService,
++                DeleteNetworkInstanceRequest, ListNetworkInstanceMetaRequest, ListNetworkInstanceRequest,
++                NetworkConfig, RunNetworkInstanceRequest, WebClientService,
+@@ -123,0 +126,2 @@
++    #[command(about = "manage network instances") ]
++    Instance(InstanceArgs),
+@@ -157,0 +162,19 @@
++}
++
++#[derive(Args, Debug)]
++struct InstanceArgs {
++    #[command(subcommand)]
++    command: InstanceCommand,
++}
++
++#[derive(Subcommand, Debug)]
++enum InstanceCommand {
++    List,
++    Start {
++        #[arg(long)]
++        config: PathBuf,
++    },
++    Stop {
++        #[arg(long)]
++        id: uuid::Uuid,
++    },
+@@ -611,0 +635,42 @@
++    async fn handle_instance(&self, command: InstanceCommand) -> Result<(), Error> {
++        let client = self.get_manage_client().await?;
++        let result = match command {
++            InstanceCommand::List => {
++                let response = client.list_network_instance(
++                    BaseController::default(), ListNetworkInstanceRequest {},
++                ).await?;
++                let mut ids = response.inst_ids.into_iter()
++                    .map(|id| uuid::Uuid::from(id).to_string()).collect::<Vec<_>>();
++                ids.sort();
++                serde_json::json!({"instances": ids})
++            }
++            InstanceCommand::Start { config } => {
++                let cfg = TomlConfigLoader::new(&config)?;
++                let id = cfg.get_id();
++                client.run_network_instance(
++                    BaseController::default(), RunNetworkInstanceRequest {
++                        inst_id: Some(id.into()),
++                        config: Some(NetworkConfig::new_from_config(cfg)?),
++                        ..Default::default()
++                    },
++                ).await?;
++                serde_json::json!({"instance_id": id.to_string()})
++            }
++            InstanceCommand::Stop { id } => {
++                let response = client.delete_network_instance(
++                    BaseController::default(), DeleteNetworkInstanceRequest {
++                        inst_ids: vec![id.into()],
++                    },
++                ).await?;
++                let remaining = response.remain_inst_ids.into_iter()
++                    .map(uuid::Uuid::from).collect::<Vec<_>>();
++                if remaining.contains(&id) {
++                    return Err(anyhow::anyhow!("instance cannot be deleted").into());
++                }
++                serde_json::json!({"stopped": id.to_string()})
++            }
++        };
++        println!("{}", serde_json::to_string(&result)?);
++        Ok(())
++    }
++
+@@ -2881,0 +2947 @@
++        SubCommand::Instance(args) => handler.handle_instance(args.command).await?,

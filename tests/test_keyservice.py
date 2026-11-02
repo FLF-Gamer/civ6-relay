@@ -2,11 +2,13 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 import http.client
 import json
+import socket
 from pathlib import Path
 import sys
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 import uuid
 
@@ -246,6 +248,49 @@ class KeyTests(unittest.TestCase):
 
 
 class CliDefaultsTests(unittest.TestCase):
+    def test_public_http_entrypoint_serves_free_and_key_modes_without_certificates(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            profile=root/'common-profile.json'
+            profile.write_text(json.dumps(dict(schema=4,access_mode='shared',expires_at=int(time.time())+3600)))
+            for enabled in (False,True):
+                state=root/('key' if enabled else 'free')
+                command=[sys.executable,str(Path(access.__file__)),'--state-dir',str(state)]
+                args=command+['init','--endpoint','8.8.8.8','--free-profile',str(profile)]
+                if enabled:args.append('--enable-key')
+                subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=5)
+                with socket.socket() as probe:
+                    probe.bind(('127.0.0.1',0));port=probe.getsockname()[1]
+                process=subprocess.Popen(command+['serve','--listen','0.0.0.0','--port',str(port)],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+                def request(path,body=None):
+                    connection=http.client.HTTPConnection('127.0.0.1',port,timeout=1)
+                    try:
+                        connection.request('GET' if body is None else 'POST',path,
+                            None if body is None else json.dumps(body),{'Content-Type':'application/json'})
+                        response=connection.getresponse()
+                        return response.status,json.loads(response.read().decode())
+                    finally:connection.close()
+                try:
+                    for attempt in range(50):
+                        self.assertIsNone(process.poll(),'HTTP service exited before listening')
+                        try:
+                            status,result=request('/v1/version');break
+                        except OSError:time.sleep(.05)
+                    else:self.fail('HTTP service did not start')
+                    self.assertEqual((status,result['server_version']),(200,access.relay.VERSION))
+                    status,result=request('/v1/keys',dict(device_id=str(uuid.uuid4())))
+                    self.assertEqual(status,200)
+                    self.assertEqual(bool(result['key']),enabled)
+                    if not enabled:
+                        status,result=request('/v1/connect',dict(device_id=str(uuid.uuid4())))
+                        self.assertEqual((status,result['port']),(200,9527))
+                        self.assertNotIn('session_token',result)
+                finally:
+                    process.terminate()
+                    try:process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:process.kill();process.wait(timeout=5)
+                    process.stderr.close()
+
     def test_init_defaults_to_free_and_requires_explicit_key_enable(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)

@@ -40,7 +40,6 @@ def main():
         for path in output.glob('*2.1.0*'):
             retired.mkdir(parents=True,exist_ok=True);shutil.move(str(path),str(retired/path.name))
     files=[ROOT/x for x in ('relayctl.py','keyservice.py','install.sh','README.md')]
-    files.append(ROOT/'deploy/civ6-relay-keys.service')
     for directory in source_directories:
         files.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc')
     files.extend(ROOT/'vendor/linux-amd64'/x for x in ('wg','checksums.json'))

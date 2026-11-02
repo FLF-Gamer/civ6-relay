@@ -32,12 +32,14 @@ if 'generate' in args:
         'credential_secret': base64.b64encode(bytes(range(32))).decode('ascii')}))
 elif args[-1:] == ['route']:
     print('[]')
+elif args[-2:] == ['instance', 'list']:
+    print('{"instances": []}')
 else:
     print('{}')
 '''
 
 COMMAND_STUB = '''#!/usr/bin/python3
-import hashlib, json, os, shutil, sys
+import hashlib, json, os, shutil, signal, subprocess, sys, time
 from pathlib import Path
 root = Path('/tmp/civ6-installer-smoke')
 name = Path(sys.argv[0]).name
@@ -70,7 +72,17 @@ elif name == 'systemctl':
             (root / 'copied-cli.sha256').write_text(hashlib.sha256(cli.read_bytes()).hexdigest())
             shutil.copyfile(str(root / 'cli'), str(cli))
             cli.chmod(0o755)
-    elif args == ['enable', '--now', 'civ6-relay.service']: state.write_text('active')
+    elif args == ['enable', '--now', 'civ6-relay.service']:
+        child=subprocess.Popen(['/usr/bin/python3','/opt/civ6-relay/keyservice.py','--state-dir','/etc/civ6-relay','serve'],
+            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        (root/'service-pid').write_text(str(child.pid))
+        state.write_text('active')
+    elif args == ['disable', '--now', 'civ6-relay.service']:
+        path=root/'service-pid'
+        if path.exists():
+            try:os.kill(int(path.read_text()),signal.SIGINT)
+            except ProcessLookupError:pass
+        state.write_text('inactive')
     elif args == ['is-active', 'civ6-relay.service']:
         active = state.read_text() if state.exists() else 'inactive'
         print(active)
@@ -137,6 +149,7 @@ def main():
             source = Path(temporary)
             shutil.copyfile(str(ROOT / 'install.sh'), str(source / 'install.sh'))
             shutil.copyfile(str(ROOT / 'relayctl.py'), str(source / 'relayctl.py'))
+            shutil.copyfile(str(ROOT / 'keyservice.py'), str(source / 'keyservice.py'))
             (source / 'vendor').symlink_to(ROOT / 'vendor', target_is_directory=True)
             client = source / 'client/windows'
             client.mkdir(parents=True)
@@ -151,6 +164,11 @@ def main():
     command(['bash', ROOT / 'install.sh', '--endpoint', '8.8.8.8', '--port', '29527'])
     require((PROGRAM / '.civ6-relay-managed').read_text().strip() == 'civ6-relay/v3', 'Installation marker missing')
     require((FIXTURE / 'service-state').read_text() == 'active', 'Initialization did not enable the fixture service')
+    unit=Path('/etc/systemd/system/civ6-relay.service').read_text()
+    require('keyservice.py --state-dir /etc/civ6-relay serve' in unit,'The main service does not own the access manager')
+    require(not Path('/etc/systemd/system/civ6-relay-keys.service').exists(),'Unexpected separate access service')
+    config=json.loads((CONFIG/'service.json').read_text())
+    require(config['key_required'] is False and config['listen']=='0.0.0.0' and config['api_port']==15888,'Free HTTP defaults differ')
     require((FIXTURE / 'copied-cli.sha256').read_text() == digest(ROOT / 'vendor/easytier/linux-x86_64/easytier-cli'),
         'Installer did not copy the actual CLI before fixture replacement')
     for name, source in (('easytier-core', 'vendor/easytier/linux-x86_64/easytier-core'),
@@ -193,7 +211,7 @@ def main():
             'Shared profile unexpectedly contains a device identity or endpoint')
     ports = set(json.loads((FIXTURE / 'ports.json').read_text()))
     require(ports == {'permanent:22/tcp', 'runtime:22/tcp', 'permanent:29527/tcp', 'runtime:29527/tcp',
-                      'permanent:29527/udp', 'runtime:29527/udp'}, 'Installer changed unrelated fixture firewall state')
+                      'permanent:29527/udp', 'runtime:29527/udp','permanent:15888/tcp','runtime:15888/tcp'}, 'Installer changed unrelated fixture firewall state')
     print('PASS actual initialization/bundle export preserves runtime, private profile shape and existing firewall rules')
 
     before = {path: digest(path) for path in (CONFIG / 'state.json', CONFIG / 'common-profile.json', exported)}
@@ -201,6 +219,10 @@ def main():
     require('已有配置' in rejected.stderr, 'Repeat installation did not explain existing state')
     require(all(digest(path) == value for path, value in before.items()), 'Repeat installation reset existing state')
     print('PASS repeat installation rejects existing configuration without resetting it')
+    command(['/usr/local/sbin/civ6-relay','uninstall'])
+    require(not CONFIG.exists(),'Uninstall retained the service configuration')
+    require(set(json.loads((FIXTURE/'ports.json').read_text()))=={'permanent:22/tcp','runtime:22/tcp'},'Uninstall changed pre-existing firewall ports')
+    print('PASS one-service shutdown and uninstall preserve pre-existing firewall ports')
 
 
 if __name__ == '__main__':

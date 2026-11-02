@@ -39,17 +39,12 @@ namespace Civ6Relay.Access {
     }
 }
 '@
-    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 }
 
 function Get-KeyServiceUrl {
     param([string]$Endpoint, [string]$Port)
     $target = New-ClientPreferences '连接' $Endpoint $Port
-    $address = $null
-    $loopback = $target.endpoint -eq 'localhost'
-    if ([Net.IPAddress]::TryParse($target.endpoint, [ref]$address)) { $loopback = [Net.IPAddress]::IsLoopback($address) }
-    $scheme = if ($loopback) { 'http' } else { 'https' }
-    return ($scheme + '://' + $target.endpoint + ':' + $target.port)
+    return ('http://' + $target.endpoint + ':' + $target.port)
 }
 
 function Start-KeyApiRequest {
@@ -79,7 +74,7 @@ function Complete-ServerVersionRequest {
 function Complete-KeyApiRequest {
     param([object]$Task)
     try { $text = $Task.GetAwaiter().GetResult() }
-    catch { throw '无法连接服务器接入接口。请检查地址、端口、网络和服务器 HTTPS 证书。' }
+    catch { throw '无法连接服务器接入接口。请检查地址、接入端口和网络。' }
     try { $response = ConvertFrom-Json -InputObject $text }
     catch { throw '服务器未返回有效的接入信息，请检查服务器版本和接入端口。' }
     if ($response.PSObject.Properties['error']) {

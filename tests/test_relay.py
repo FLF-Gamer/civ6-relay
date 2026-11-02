@@ -93,10 +93,10 @@ class RelayTests(unittest.TestCase):
         state=self.relay.load();self.assertNotIn('alice',state['clients']);self.assertIn('bob',state['clients'])
         self.assertEqual(self.runner.revoked,[a['credential_id']]);self.assertFalse((self.p.clients/'alice.json').exists())
     def test_firewall_ownership_preserves_existing_security(self):
-        self.runner.ports={(True,'22/tcp'),(False,'22/tcp'),(True,'51820/udp')}
+        self.runner.ports={(True,'22/tcp'),(False,'22/tcp'),(True,str(self.state['port'])+'/udp')}
         original=self.runner.ports.copy()
         self.relay.setup_firewall(self.state)
-        self.assertEqual(len(self.state['firewall_owned']),3)
+        self.assertEqual(len(self.state['firewall_owned']),5)
         self.relay.uninstall(self.state)
         self.assertEqual(self.runner.ports,original)
         calls=' '.join(' '.join(c) for c in self.runner.calls)

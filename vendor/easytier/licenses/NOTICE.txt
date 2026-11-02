@@ -12,7 +12,8 @@ Packet.dll/Packet.lib artifacts; retained source files are unchanged.
 Original and published archive hashes and omitted artifact hashes are in
 BUILD-MANIFEST.json. Dependency revisions are in its Cargo.lock.
 Apply EasyTier-fast-failover.patch to that source; build instructions are
-in BUILD-CIV6.txt. The same patched source is used for Linux and Windows.
+in BUILD-CIV6.txt. Per-platform source fingerprints are recorded in
+BUILD-MANIFEST.json.
 The desktop launcher invokes EasyTier as a separate process.
 
 The unchanged Windows components redistributed here are Wintun 0.14.1
@@ -42,3 +43,7 @@ library as a private build input; it is not redistributed in this package.
 Its official BSD-style license is preserved in WinPcap-SDK-LICENSE.txt,
 and its source URL and hashes are in BUILD-MANIFEST.json. This does not
 license or redistribute any Npcap DLL.
+
+Linux CLI modifications for Civ6 Relay, 2026-11-02: local RPC commands
+list, start and stop independent network instances within one core
+process. Game traffic and client wire formats are unchanged.
