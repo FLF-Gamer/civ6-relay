@@ -1,8 +1,8 @@
-# 文明6联机助手 3.5.2-preview
+# 核平联机助手
 
 让 Windows 玩家通过虚拟局域网联机：优先玩家直连，无法直连时由自己的 Linux 服务器中继。在文明6中选择 **多人游戏 → 局域网**，即可一起建房、加入游戏。
 
-[下载版本（3.5.2 预览版）](https://github.com/FLF-Gamer/civ6-relay/releases/tag/v3.5.2-preview) · [玩家使用](#windows-快速开始) · [服务端部署](#服务端部署) · [源码构建](#源码构建)
+[下载 1.0.0](https://github.com/FLF-Gamer/civ6-relay/releases/tag/v1.0.0) · [玩家使用](#windows-快速开始) · [服务端部署](#服务端部署) · [源码构建](#源码构建)
 
 ![联机大厅：填写昵称、服务器 IP 和端口后连接网络](docs/images/client-lobby.png)
 
@@ -90,8 +90,8 @@ Release 完整安装包已包含服务端和 Windows 组件，推荐用于部署
 在服务器上执行：
 
 ```bash
-curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.5.2-preview/civ6-relay-server-3.5.2-preview-linux-amd64.tar.gz
-tar -xzf civ6-relay-server-3.5.2-preview-linux-amd64.tar.gz
+curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v1.0.0/civ6-relay-server-1.0.0-linux-amd64.tar.gz
+tar -xzf civ6-relay-server-1.0.0-linux-amd64.tar.gz
 cd civ6-relay
 sudo bash install.sh --endpoint SERVER_IP --port 9527
 sudo civ6-relay status

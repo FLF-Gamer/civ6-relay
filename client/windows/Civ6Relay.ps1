@@ -7,7 +7,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:PackageRoot = $PSScriptRoot
-$script:ClientVersion = '3.5.2-preview'
+$script:ClientVersion = '1.0.0'
 $script:RepositoryUrl = 'https://github.com/FLF-Gamer/civ6-relay'
 $script:ManagedRoot = Join-Path $env:ProgramData 'Civ6RelayMesh'
 $script:ManagedConfig = Join-Path $script:ManagedRoot 'network.toml'
@@ -919,7 +919,7 @@ try {
 } catch {
     if ($Action -eq 'Gui') {
         Add-Type -AssemblyName System.Windows.Forms
-        [Windows.Forms.MessageBox]::Show($_.Exception.Message,'文明6联机助手') | Out-Null
+        [Windows.Forms.MessageBox]::Show($_.Exception.Message,'核平联机助手') | Out-Null
     } else { Write-Error $_.Exception.Message }
     exit 1
 }

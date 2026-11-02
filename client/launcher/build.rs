@@ -38,6 +38,8 @@ fn main() {
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let version = env::var("CARGO_PKG_VERSION").unwrap();
     let numeric = version.split('-').next().unwrap().replace('.', ",") + ",0";
+    // Wide escapes keep the product name identical in rc.exe and llvm-rc.
+    let product_name = "核平联机助手".encode_utf16().map(|code| format!("\\x{code:04x}")).collect::<String>();
     let resource = format!(r#"1 24 "{manifest}"
 1 ICON "{icon}"
 1 VERSIONINFO
@@ -53,9 +55,9 @@ BEGIN
  BEGIN
   BLOCK "040904b0"
   BEGIN
-   VALUE "FileDescription", "Civ6 Relay Launcher\0"
+   VALUE "FileDescription", L"{product_name}\0"
    VALUE "FileVersion", "{version}\0"
-   VALUE "ProductName", "Civ6 Relay\0"
+   VALUE "ProductName", L"{product_name}\0"
    VALUE "ProductVersion", "{version}\0"
    VALUE "OriginalFilename", "Civ6Relay.exe\0"
   END

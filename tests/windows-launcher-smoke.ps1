@@ -47,6 +47,10 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 if (!$LauncherPath) { $LauncherPath = Join-Path $repoRoot 'client/windows/Civ6Relay.exe' }
 $LauncherPath = [IO.Path]::GetFullPath($LauncherPath)
 Assert ([IO.File]::Exists($LauncherPath)) 'Build client/windows/Civ6Relay.exe before running the launcher smoke test.'
+$versionInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($LauncherPath)
+Assert ($versionInfo.ProductName -ceq '核平联机助手') 'The EXE product name is missing or incorrectly encoded.'
+Assert ($versionInfo.FileDescription -ceq '核平联机助手') 'The EXE description is missing or incorrectly encoded.'
+Assert ($versionInfo.ProductVersion -ceq '1.0.0') 'The EXE product version is incorrect.'
 if (!$OutputDirectory) { $OutputDirectory = Join-Path $repoRoot '.build/windows-smoke' }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = [IO.Directory]::CreateDirectory($OutputDirectory)

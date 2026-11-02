@@ -64,7 +64,7 @@ mod windows {
     fn error(text: &str, code: u32) -> u32 {
         let number = if code > 65535 { format!("0x{code:08X}") } else { code.to_string() };
         let message = wide(&format!("{text}\n\n错误代码：{number}"));
-        let title = wide("文明6联机助手");
+        let title = wide("核平联机助手");
         unsafe { MessageBoxW(null_mut(), message.as_ptr(), title.as_ptr(), 0x10 | 0x10000); }
         if code == 0 { 1 } else { code }
     }
