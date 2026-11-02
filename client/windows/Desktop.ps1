@@ -216,7 +216,7 @@ function Show-ModernRelayWindow {
                 $response = Complete-ServerVersionRequest $ui.PendingTask
                 $c.ServerVersionText.Text = '服务端版本：' + [string]$response.server_version
                 $message = $c.ServerVersionText.Text + '；接口：v' + [string]$response.api_version + '；组网核心：' + [string]$response.engine_version
-                & $showOperation $message
+                $c.OperationPanel.Visibility = [Windows.Visibility]::Collapsed
                 Add-LiveLog $message
                 $window.UpdateLayout()
                 $c.ServerVersionButton.BringIntoView()
@@ -243,12 +243,12 @@ function Show-ModernRelayWindow {
                 } else { $c.KeyInfo.Visibility = [Windows.Visibility]::Collapsed }
             }
         } catch {
-            if ($ui.PendingKind -eq 'version') { $c.ServerVersionText.Text = '服务端版本：查询失败' }
-            & $showOperation $_.Exception.Message $true
             if ($ui.PendingKind -eq 'version') {
+                $c.ServerVersionText.Text = '查询失败：' + $_.Exception.Message
+                $c.OperationPanel.Visibility = [Windows.Visibility]::Collapsed
                 $window.UpdateLayout()
                 $c.ServerVersionButton.BringIntoView()
-            }
+            } else { & $showOperation $_.Exception.Message $true }
             $failureLabel = if ($ui.PendingKind -eq 'version') { '版本查询失败：' } else { '连接操作失败：' }
             Add-LiveLog ($failureLabel + $_.Exception.Message)
             if ($_.Exception.Data['AccessCode'] -eq 'KEY_REQUIRED') { [void]$c.KeyInput.Focus() }
@@ -274,10 +274,19 @@ function Show-ModernRelayWindow {
             }
             $ui.PendingKind = $Kind; $ui.Busy = $true
             & $setControls
-            $caption = switch ($Kind) { 'generate' { '正在获取 Key…' }; 'version' { '正在查询服务器版本…' }; default { '正在连接服务器…' } }
-            & $showOperation $caption
+            if ($Kind -eq 'version') {
+                $c.ServerVersionText.Text = '服务端版本：查询中…'
+                $c.OperationPanel.Visibility = [Windows.Visibility]::Collapsed
+            } else {
+                & $showOperation $(if ($Kind -eq 'generate') { '正在获取 Key…' } else { '正在连接服务器…' })
+            }
             $apiTimer.Start()
-        } catch { & $showOperation $_.Exception.Message $true }
+        } catch {
+            if ($Kind -eq 'version') {
+                $c.ServerVersionText.Text = '查询失败：' + $_.Exception.Message
+                $c.OperationPanel.Visibility = [Windows.Visibility]::Collapsed
+            } else { & $showOperation $_.Exception.Message $true }
+        }
     }
     $c.GenerateKeyButton.Add_Click(({ & $beginApi 'generate' }))
     $c.ServerVersionButton.Add_Click(({ & $beginApi 'version' }))
