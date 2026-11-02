@@ -43,7 +43,7 @@ class Runner:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             raise RelayError('命令缺失或超时：' + Path(str(argv[0])).name) from None
         if check and result.returncode:
-            # Core/CLI diagnostics may contain credentials. Never echo them.
+            # Core/CLI diagnostics may contain credentials, so report only the operation name.
             raise RelayError('命令失败：' + Path(str(argv[0])).name + '；请检查服务状态。')
         return result
 

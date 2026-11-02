@@ -114,7 +114,7 @@ sudo civ6-relay bundle
 
 将这个 ZIP 私下发给联机玩家，并告知服务器 IP 和端口。同一服务器的所有玩家使用同一份 ZIP，各自在客户端填写昵称。
 
-**Windows ZIP 包含本服务器的共享接入信息，不要提交到 Git 或作为公开 Release 附件。** `/etc/civ6-relay` 中的配置和密钥也应保密。公开服务端安装包不包含已部署服务器的接入信息。
+**导出的 Windows ZIP 包含本服务器的共享接入信息，仅供私下分发。公开 Release 使用不含接入配置的客户端模板。** `/etc/civ6-relay` 中的配置和密钥属于私有部署数据。公开服务端安装包不包含已部署服务器的接入信息。
 
 再次导出时不会覆盖已有文件，请指定新的输出路径：
 
@@ -171,6 +171,6 @@ $env:RUSTUP_TOOLCHAIN = '1.95.0'
 python scripts/build-launcher.py --native --verify-reproducible
 ```
 
-`--native` 使用本机编译器和 SDK，不使用 Docker。完整发布包仍需前述 Linux、Windows 组网组件；公开打包时不要传入私有 `--profile`。
+`--native` 使用本机编译器和 SDK，不使用 Docker。完整发布包仍需前述 Linux、Windows 组网组件；公开打包时省略 `--profile`，该参数用于生成包含私有接入配置的客户端。
 
 第三方组件源码、补丁和许可证见 Release 安装包内的 `vendor/easytier/licenses`、`vendor/linux-amd64/licenses` 与 `client/windows/licenses`。

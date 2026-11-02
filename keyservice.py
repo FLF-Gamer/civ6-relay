@@ -48,7 +48,7 @@ def device_id(value):
 
 
 class MeshRooms:
-    """Bounded per-room core processes, never a Python game-packet relay."""
+    """Manage a bounded set of per-room core processes."""
     def __init__(self, config, root, runner=None):
         self.config, self.root = config, Path(root)
         self.runner = runner or relay.Runner()
@@ -177,7 +177,7 @@ class KeyService:
         with self.lock:
             now = self.now()
             self.maintain()
-            # Bound both issuance state and stored pending keys. No work per game packet.
+            # Bound issuance state and the number of stored pending keys.
             for address in list(self.issuance):
                 queue = self.issuance[address]
                 while queue and queue[0] <= now-60:
@@ -309,7 +309,7 @@ class KeyService:
                 room = self.room(session['room_id'])
                 self.backend.revoke(room,json.loads(session['profile'])['credential_id'])
                 self.db.execute('DELETE FROM sessions WHERE token_hash=?',(session['token_hash'],))
-            # Unused free test keys do not reserve mesh processes or listening ports.
+            # Discard unactivated Keys after seven days.
             self.db.execute('DELETE FROM rooms WHERE activated_at IS NULL AND created_at<?',(now-7*86400,))
 
     def recover(self):
@@ -357,7 +357,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.connection.settimeout(10)
 
     def log_message(self, format, *args):
-        pass  # Request bodies, Keys and bearer tokens never enter access logs.
+        pass  # Access logging is disabled to keep Keys and bearer tokens private.
 
     def reply(self, status, body):
         encoded = json.dumps(body,ensure_ascii=False).encode('utf-8')

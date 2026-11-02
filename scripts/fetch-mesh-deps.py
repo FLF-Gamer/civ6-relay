@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch unmodified, pinned official EasyTier release files; never run installers."""
+"""Fetch and extract checksum-pinned official EasyTier release archives."""
 import hashlib
 import io
 import json

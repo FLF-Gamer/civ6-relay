@@ -30,7 +30,7 @@ if [[ -L $target_dir ]] || [[ -L /usr/local/sbin/civ6-relay ]] ||
   echo '同名安装路径不属于本工具，停止安装。' >&2
   exit 1
 fi
-# Hash bundled components once at installation; no periodic binary scans.
+# Verify bundled component hashes before installation.
 python3 - "$source_dir" <<'PY'
 import hashlib, json, sys
 from pathlib import Path

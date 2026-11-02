@@ -91,7 +91,7 @@ sudo python3 /opt/civ6-relay/keyservice.py init --endpoint SERVER_PUBLIC_IP --fr
 
 ## 配置与维护
 
-私有状态保存在 `/var/lib/civ6-relay-keys`。备份该目录即可保留 Key、到期时间、房间身份与会话；不要上传到 GitHub 或公开分发。客户端只保存当前填写的服务器和 Key，后台凭据不进入日志。
+私有状态保存在 `/var/lib/civ6-relay-keys`。该目录包含 Key、到期时间、房间身份与会话，仅作私有备份。客户端只保存当前填写的服务器和 Key，后台凭据不进入日志。
 
 停止服务后可修改 `service.json`，然后重新启动：
 

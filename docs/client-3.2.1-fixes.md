@@ -8,7 +8,7 @@
 - 状态 JSON 的数组显式逐项展开，适配 Windows PowerShell 5.1 和 PowerShell 7 的不同输出行为。原流程在数组整体作为单个管道对象输出时，会把路由列表误当成一条路由并失败。兼容行为依据：[PowerShell 上游问题记录](https://github.com/PowerShell/PowerShell/issues/3424)；用于回归模拟的 `-NoEnumerate` 见 [微软文档](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/convertfrom-json?view=powershell-7.5)。
 - 状态查询使用 UTF-8 读取后台输出，保留中文昵称。查询失败显示具体原因，包括本机 RPC 未就绪、实例不匹配或组件无法启动；不回显原始配置或后台错误正文。
 - “检查组件”比较源文件和已安装文件，只替换缺失或损坏的文件。内容相同的 WinDivert 驱动不重写；连接期间文件完整时可只读检查。确需修复时先断开；若不同版本的驱动仍被系统占用，提示重启后再检查。
-- 实际需要替换驱动时先尝试驱动，避免驱动被占用后才发现其他组件已经被替换。常规重连仍只比较小型版本清单，不新增持续哈希、网络扫描或按包脚本。
+- 实际需要替换驱动时先尝试驱动，避免驱动被占用后才发现其他组件已经被替换。常规重连只比较小型版本清单。
 
 ## 已执行
 

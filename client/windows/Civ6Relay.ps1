@@ -242,7 +242,7 @@ function Get-ConnectionConfig {
         'enable_udp_broadcast_relay = true',
         '[console_logger]', 'level = "off"'
     )
-    # Civ6 LAN uses UDP. Do not expose TCP services such as file sharing or RDP.
+    # The game ACL permits UDP and ICMP while isolating host TCP services.
     foreach ($chain in @(1,2)) {
         $lines += @('[[acl.acl_v1.chains]]', ('name = "civ6-udp-' + $chain + '"'),
             ('chain_type = ' + $chain), 'enabled = true', 'default_action = 2',
@@ -326,8 +326,8 @@ function Install-Component {
         if (Get-OwnRelayProcess) { throw '发现组件需要修复或升级，请先断开后再检查组件。' }
         Protect-ManagedDirectory
         New-Item -ItemType Directory -Path $target -Force | Out-Null
-        # An unchanged loaded driver must never be overwritten. If a driver
-        # really needs replacement, try it before modifying executable files.
+        # Preserve loaded drivers with matching content. Replace a changed driver first
+        # so a busy driver leaves the executable files untouched.
         foreach ($name in @($replace | Sort-Object { if ($_ -eq 'WinDivert64.sys') { 0 } else { 1 } })) {
             try { Copy-Item -LiteralPath (Join-Path $source $name) -Destination (Join-Path $target $name) -Force }
             catch [IO.IOException] { throw ('组件 ' + $name + ' 正被系统或其他程序使用，未能替换；请重启电脑后再检查组件。') }
@@ -850,7 +850,7 @@ function Get-LiveView {
                     }
                     foreach ($key in @($state.Paths.Keys)) { if (!$paths.ContainsKey($key)) { Add-LiveLog ('玩家路由已不可见：'+$key) } }
                     $state.Paths=$paths
-                    # Probe only players in the same game /24; never use an advertised public address as a ping target.
+                    # Limit player latency probes to virtual addresses in the current game /24.
                     $prefix=if ($snapshot.OwnIP -match '^(\d+\.\d+\.\d+)\.\d+$') { $Matches[1]+'.' } else { '' }
                     $targets=@($state.RoutePeers | Where-Object { $prefix -and $_.VirtualIP.StartsWith($prefix) } | ForEach-Object { $_.VirtualIP })
                     $state.PingWorker.SetPeers([string[]]$targets)
