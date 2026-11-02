@@ -7,13 +7,14 @@ __pycache__/
 *.psk
 *.conf
 /clients/
-/state.json
+state.json
 .build/
 dist/
 
 profile.json
 credentials.json
 preferences.json
+appearance.json
 network.toml
 
 # Local runtime and secrets
@@ -28,6 +29,11 @@ identity.json
 managed.json
 trusted-server.json
 server.toml
+access-key.json
+server-session.json
+service.json
+access.sqlite*
+service.lock
 
 # Native release artifacts are distributed through GitHub Releases
 /vendor/easytier/linux-x86_64/easytier-core

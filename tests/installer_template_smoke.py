@@ -130,9 +130,9 @@ def main():
         path.chmod(0o755)
 
     # Missing client entry points must fail before creating an installation.
-    desktop_files = ('Desktop.ps1', 'Desktop.xaml', 'DesktopModel.cs')
-    client_files = ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'LiveMonitor.cs', 'README.txt') + desktop_files
-    for absent in ('Civ6Relay.exe', 'LiveMonitor.cs') + desktop_files:
+    desktop_files = ('Desktop.ps1', 'Desktop.xaml', 'DesktopModel.cs', 'Themes.json')
+    client_files = ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'LiveMonitor.cs', 'KeyAccess.ps1', 'KeyLease.ps1', 'README.txt') + desktop_files
+    for absent in ('Civ6Relay.exe', 'LiveMonitor.cs', 'KeyAccess.ps1', 'KeyLease.ps1') + desktop_files:
         with tempfile.TemporaryDirectory(prefix='civ6-missing-runtime-') as temporary:
             source = Path(temporary)
             shutil.copyfile(str(ROOT / 'install.sh'), str(source / 'install.sh'))

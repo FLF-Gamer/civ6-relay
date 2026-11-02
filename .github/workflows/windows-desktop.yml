@@ -26,6 +26,12 @@ jobs:
       - name: Render and exercise production UI
         shell: powershell
         run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File tests/windows-ui-smoke.ps1
+      - name: Exercise client Key HTTP integration
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/client-key.Tests.ps1
+      - name: Exercise theme persistence and resources
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/client-theme.Tests.ps1
       - name: Save Windows results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

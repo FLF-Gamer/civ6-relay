@@ -30,7 +30,8 @@ $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
 $script:UiSmoke = @{
     Step=0; Window=$null; Connected=$false; SaveCalls=0; ConnectCalls=0
     DisconnectCalls=0; StartCalls=0; StopCalls=0; DiagnoseCalls=0; ComponentCalls=0
-    Preferences=$null
+    VersionCalls=0; OpenedUrls=(New-Object 'Collections.Generic.List[string]')
+    Preferences=$null; KeyCalls=0; KeyRequired=$false; SuppliedKey=''; Theme='classic'; ThemeSaveCalls=0
     Errors=(New-Object 'Collections.Generic.List[string]')
     Screenshots=(New-Object 'Collections.Generic.List[object]')
     Clock=[Diagnostics.Stopwatch]::StartNew()
@@ -46,7 +47,39 @@ function Save-ClientPreferences {
     $script:UiSmoke.Preferences=$value
     return $value
 }
+function Get-DesktopTheme { return $script:UiSmoke.Theme }
+function Save-DesktopTheme { param([string]$Name); $script:UiSmoke.Theme=$Name; $script:UiSmoke.ThemeSaveCalls++ }
+function Get-OwnRelayProcess { return $null }
+function Get-SavedAccessKey { return '' }
+function Save-AccessKey { }
+function Test-UseServerAccess { return $true }
+function Get-DeviceInstanceId { return '86a19ae1-765c-4e67-85af-7712f48804b9' }
+function Start-KeyApiRequest {
+    param([string]$Endpoint,[string]$Port,[string]$Path,[object]$Body)
+    $script:UiSmoke.KeyCalls++
+    if ($Path -eq '/v1/keys') {
+        $reply = if ($script:UiSmoke.KeyRequired) { @{key='C6-EXAMPLE-KEY'} } else { @{key=$null;message='此服务器无需 Key。'} }
+    } else {
+        $script:UiSmoke.SuppliedKey = $Body.key
+        $reply = @{profile=@{};expires_at=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()+3600}
+    }
+    $task = New-Object 'Threading.Tasks.TaskCompletionSource[string]'
+    $task.SetResult(($reply | ConvertTo-Json -Compress))
+    return $task.Task
+}
+function Start-ServerVersionRequest {
+    param([string]$Endpoint,[string]$Port)
+    $script:UiSmoke.VersionCalls++
+    $task = New-Object 'Threading.Tasks.TaskCompletionSource[string]'
+    $task.SetResult((@{server_version=$script:ClientVersion;engine_version='2.6.4-civ6.2';api_version=1} | ConvertTo-Json -Compress))
+    return $task.Task
+}
+function Start-Process {
+    param([string]$FilePath)
+    $script:UiSmoke.OpenedUrls.Add($FilePath)
+}
 function Connect-Relay {
+    param([object]$ServerAccess)
     $script:UiSmoke.ConnectCalls++
     $script:UiSmoke.Connected=$true
     return '已加入虚拟局域网。'
@@ -113,6 +146,8 @@ function Invoke-UiSmokeClick {
     $button=Get-UiSmokeElement $Window $Name
     Assert-UiSmoke ($button -is [Windows.Controls.Primitives.ButtonBase]) ('Expected a button: '+$Name)
     Assert-UiSmoke ($button.IsVisible -and $button.IsEnabled) ('Button is inaccessible: '+$Name)
+    $button.BringIntoView()
+    $Window.UpdateLayout()
     if ($button -is [Windows.Controls.RadioButton]) {
         # SelectionItem invokes the real RadioButton selection / Checked event.
         $peer=New-Object Windows.Automation.Peers.RadioButtonAutomationPeer($button)
@@ -150,7 +185,7 @@ function Assert-UiSmokeLayout {
     }
     if ($Page -eq 'Lobby') {
         $bounds=New-Object 'Collections.Generic.List[Windows.Rect]'
-        foreach ($name in @('NameInput','ServerInput','PortInput')) {
+        foreach ($name in @('NameInput','ServerInput','PortInput','KeyInput')) {
             Assert-UiSmokeVisible $Window $name 64 32 -AllowDisabled:$script:UiSmoke.Connected
             $input=Get-UiSmokeElement $Window $name
             Assert-UiSmoke ($input -is [Windows.Controls.TextBox] -and -not $input.IsReadOnly -and $input.Focusable) ('Input is not editable: '+$name)
@@ -163,6 +198,7 @@ function Assert-UiSmokeLayout {
         } else {
             Assert-UiSmokeVisible $Window 'ConnectButton' 72 32
         }
+        Assert-UiSmokeVisible $Window 'GenerateKeyButton' 64 32 -AllowDisabled:$script:UiSmoke.Connected
         $list=Get-UiSmokeElement $Window 'PlayerList'
         if ($list.Items.Count -gt 0) {
             Assert-UiSmokeVisible $Window 'PlayerList' 300 96
@@ -180,7 +216,7 @@ function Assert-UiSmokeLayout {
         Assert-UiSmokeVisible $Window 'LogBox' 300 120
         Assert-UiSmoke ((Get-UiSmokeElement $Window 'LogBox').IsReadOnly) 'Production log must be read-only.'
     } else {
-        foreach ($name in @('AutoDisconnectCheck','SaveButton','DiagnoseButton','ComponentButton')) { Assert-UiSmokeVisible $Window $name }
+        foreach ($name in @('ThemeClassicButton','ThemeCiv6Button','AutoDisconnectCheck','SaveButton','DiagnoseButton','ComponentButton','GithubButton','ReleasesButton','ServerVersionButton')) { Assert-UiSmokeVisible $Window $name }
     }
 }
 function Save-UiSmokeScreenshot {
@@ -237,7 +273,7 @@ $script:UiSmokeTimer.Add_Tick({
         switch ($script:UiSmoke.Step) {
             0 {
                 Assert-UiSmokeLayout $window 'Lobby'
-                foreach ($name in @('NameInput','ServerInput','PortInput')) {
+                foreach ($name in @('NameInput','ServerInput','PortInput','KeyInput')) {
                     Assert-UiSmoke ((Get-UiSmokeElement $window $name).Text -eq '') ('First-launch field must be empty: '+$name)
                 }
                 Save-UiSmokeScreenshot $window 'network-initial'
@@ -247,15 +283,42 @@ $script:UiSmokeTimer.Add_Tick({
                 Assert-UiSmokeLayout $window 'Lobby'
                 $window.Width=$initialWidth;$window.Height=$initialHeight
                 $window.UpdateLayout()
-                (Get-UiSmokeElement $window 'NameInput').Text='方舟'
                 # RFC 5737 documentation address; the mocked action never contacts it.
                 (Get-UiSmokeElement $window 'ServerInput').Text='203.0.113.10'
-                (Get-UiSmokeElement $window 'PortInput').Text='9527'
-                Invoke-UiSmokeClick $window 'ConnectButton'
+                (Get-UiSmokeElement $window 'PortInput').Text='443'
+                Invoke-UiSmokeClick $window 'NavSettings'
+                Invoke-UiSmokeClick $window 'ServerVersionButton'
             }
             1 {
+                if ((Get-UiSmokeElement $window 'ServerVersionText').Text -ne ('服务端版本：'+$script:ClientVersion)) { return }
+                Assert-UiSmoke ($script:UiSmoke.VersionCalls -eq 1 -and $script:UiSmoke.KeyCalls -eq 0 -and $script:UiSmoke.SaveCalls -eq 0 -and $script:UiSmoke.ConnectCalls -eq 0) 'Version query unexpectedly generated a Key, saved preferences or connected.'
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'NameInput').Text -eq '') 'Version query unexpectedly requires a nickname.'
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'ClientVersionText').Text -eq ('客户端版本：'+$script:ClientVersion)) 'Client version is missing.'
+                Invoke-UiSmokeClick $window 'NavSettings'
+                Invoke-UiSmokeClick $window 'GithubButton'
+                Invoke-UiSmokeClick $window 'ReleasesButton'
+                Assert-UiSmoke ($script:UiSmoke.OpenedUrls.Count -eq 2 -and $script:UiSmoke.OpenedUrls[0] -eq 'https://github.com/FLF-Gamer/civ6-relay' -and $script:UiSmoke.OpenedUrls[1] -eq 'https://github.com/FLF-Gamer/civ6-relay/releases') 'Update buttons did not open the intended GitHub pages.'
+                Invoke-UiSmokeClick $window 'NavLobby'
+                (Get-UiSmokeElement $window 'NameInput').Text='方舟'
+                Invoke-UiSmokeClick $window 'GenerateKeyButton'
+            }
+            2 {
+                if ((Get-UiSmokeElement $window 'OperationText').Text -ne '此服务器无需 Key。') { return }
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'KeyInput').Text -eq '') 'Free server inserted a Key.'
+                $script:UiSmoke.KeyRequired=$true
+                Invoke-UiSmokeClick $window 'GenerateKeyButton'
+            }
+            3 {
+                if ((Get-UiSmokeElement $window 'KeyInput').Text -ne 'C6-EXAMPLE-KEY') { return }
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'KeyInfo').Text -eq '联机玩家请填写同一个 Key。') 'Shared Key reminder is missing.'
+                Assert-UiSmokeLayout $window 'Lobby'
+                Save-UiSmokeScreenshot $window 'network-key-fixture'
+                Invoke-UiSmokeClick $window 'ConnectButton'
+            }
+            4 {
                 $players=Get-UiSmokeElement $window 'PlayerList'
                 if ($players.Items.Count -ne 2) { return }
+                Assert-UiSmoke ($script:UiSmoke.SuppliedKey -eq 'C6-EXAMPLE-KEY' -and $script:UiSmoke.KeyCalls -eq 3) 'Key did not accompany the first connect request.'
                 Assert-UiSmoke ($script:UiSmoke.ConnectCalls -eq 1 -and $script:UiSmoke.SaveCalls -eq 1) 'Connect did not invoke the fixture actions exactly once.'
                 Assert-UiSmokeLayout $window 'Lobby'
                 $channels=@($players.Items | ForEach-Object { [string]$_.Channel })
@@ -264,7 +327,7 @@ $script:UiSmokeTimer.Add_Tick({
                 Save-UiSmokeScreenshot $window 'network-connected-fixture'
                 Invoke-UiSmokeClick $window 'NavLogs'
             }
-            2 {
+            5 {
                 Assert-UiSmokeLayout $window 'Logs'
                 $log=Get-UiSmokeElement $window 'LogBox'
                 if ($log.Text -notmatch '延迟监测已启动') { return }
@@ -277,36 +340,60 @@ $script:UiSmokeTimer.Add_Tick({
                 Assert-UiSmoke ($window.MinWidth -le 880 -and $window.MinHeight -le 620) 'Production minimum size exceeds the target 880 x 620.'
                 $window.Width=880;$window.Height=620
             }
-            3 {
+            6 {
                 Assert-UiSmokeLayout $window 'Logs'
                 Save-UiSmokeScreenshot $window 'logs-minimum-size'
                 Invoke-UiSmokeClick $window 'NavSettings'
             }
-            4 {
+            7 {
                 Assert-UiSmokeLayout $window 'Settings'
                 Assert-UiSmoke ((Get-UiSmokeElement $window 'AutoDisconnectCheck').IsChecked -eq $true) 'Automatic disconnect on close must be enabled initially.'
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'ThemeClassicButton').IsChecked -eq $true) 'The original theme should remain the default.'
+                Invoke-UiSmokeClick $window 'ThemeCiv6Button'
+                Assert-UiSmoke ($script:UiSmoke.Theme -eq 'civ6' -and $script:UiSmoke.ThemeSaveCalls -eq 1) 'Theme selection was not saved immediately.'
+                Assert-UiSmoke ($window.Background.Color -eq [Windows.Media.ColorConverter]::ConvertFromString('#F3EBD9')) 'Civ6 window surface did not update.'
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'NavSettings').Foreground.Color -eq [Windows.Media.ColorConverter]::ConvertFromString('#2D3942')) 'Selected navigation text did not update.'
+                Assert-UiSmoke ($script:UiSmoke.ConnectCalls -eq 1 -and $script:UiSmoke.DisconnectCalls -eq 0) 'Changing theme interrupted the connection.'
+                Save-UiSmokeScreenshot $window 'settings-civ6-theme'
+                Invoke-UiSmokeClick $window 'NavLobby'
+                Assert-UiSmokeLayout $window 'Lobby'
+                Assert-UiSmoke (!(Get-UiSmokeElement $window 'KeyInput').IsEnabled) 'Changing theme unlocked connected input fields.'
+                Save-UiSmokeScreenshot $window 'network-civ6-theme'
+                Invoke-UiSmokeClick $window 'NavLogs'
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'LogBox').Background.Color -eq [Windows.Media.ColorConverter]::ConvertFromString('#FBF6E9')) 'Log background did not update.'
+                Save-UiSmokeScreenshot $window 'logs-civ6-theme'
+                Invoke-UiSmokeClick $window 'NavSettings'
+                Invoke-UiSmokeClick $window 'ThemeClassicButton'
+                Assert-UiSmoke ($window.Background.Color -eq [Windows.Media.ColorConverter]::ConvertFromString('#F9F9F9')) 'Restoring the original theme failed.'
+                Assert-UiSmoke ($script:UiSmoke.ThemeSaveCalls -eq 2) 'Theme changed without persisting its selection.'
+                Invoke-UiSmokeClick $window 'ServerVersionButton'
+            }
+            8 {
+                if ($script:UiSmoke.VersionCalls -ne 2 -or (Get-UiSmokeElement $window 'ServerVersionText').Text -ne ('服务端版本：'+$script:ClientVersion)) { return }
+                Assert-UiSmoke ($script:UiSmoke.ConnectCalls -eq 1 -and $script:UiSmoke.DisconnectCalls -eq 0 -and $script:UiSmoke.Connected) 'Querying the server version interrupted the active network.'
+                Save-UiSmokeScreenshot $window 'settings-version'
                 Invoke-UiSmokeClick $window 'DiagnoseButton'
             }
-            5 {
+            9 {
                 if ($script:UiSmoke.DiagnoseCalls -eq 0) { return }
                 Assert-UiSmoke ($script:UiSmoke.DiagnoseCalls -eq 1) 'Network diagnostics did not use the fixture.'
                 Assert-UiSmokeVisible $window 'ComponentButton'
                 Invoke-UiSmokeClick $window 'ComponentButton'
             }
-            6 {
+            10 {
                 if ($script:UiSmoke.ComponentCalls -eq 0) { return }
                 Assert-UiSmoke ($script:UiSmoke.ComponentCalls -eq 1) 'Component check did not use the fixture.'
                 Assert-UiSmokeVisible $window 'SaveButton'
                 Invoke-UiSmokeClick $window 'SaveButton'
             }
-            7 {
+            11 {
                 if ($script:UiSmoke.SaveCalls -lt 2) { return }
                 Assert-UiSmoke ($script:UiSmoke.SaveCalls -eq 2) 'Save settings did not use the fixture.'
                 Assert-UiSmokeLayout $window 'Settings'
                 Save-UiSmokeScreenshot $window 'settings-minimum-size'
                 Invoke-UiSmokeClick $window 'NavLobby'
             }
-            8 {
+            12 {
                 Assert-UiSmokeLayout $window 'Lobby'
                 Save-UiSmokeScreenshot $window 'network-minimum-size'
                 $script:UiSmoke.Step++
@@ -317,7 +404,7 @@ $script:UiSmokeTimer.Add_Tick({
         $script:UiSmoke.Step++
     } catch { Stop-UiSmokeFailure $_.Exception.Message }
     finally {
-        if ($script:UiSmoke.Step -lt 9 -and $script:UiSmoke.Errors.Count -eq 0) { $script:UiSmokeTimer.Start() }
+        if ($script:UiSmoke.Step -lt 13 -and $script:UiSmoke.Errors.Count -eq 0) { $script:UiSmokeTimer.Start() }
     }
 })
 $script:UiSmokeUnhandled=[Windows.Threading.DispatcherUnhandledExceptionEventHandler]{
@@ -337,10 +424,10 @@ finally {
 }
 if ($script:UiSmoke.Errors.Count -eq 0) {
     try {
-        Assert-UiSmoke ($script:UiSmoke.Step -eq 9) 'Production window closed before all UI checks completed.'
+        Assert-UiSmoke ($script:UiSmoke.Step -eq 13) 'Production window closed before all UI checks completed.'
         Assert-UiSmoke ($script:UiSmoke.DisconnectCalls -eq 1) 'Closing did not disconnect exactly once.'
         Assert-UiSmoke ($script:UiSmoke.StopCalls -eq 1) 'Closing did not stop its live monitor exactly once.'
-        Assert-UiSmoke ($script:UiSmoke.Screenshots.Count -eq 6) 'Expected six actual production WPF renderings.'
+        Assert-UiSmoke ($script:UiSmoke.Screenshots.Count -eq 11) 'Expected eleven actual production WPF renderings.'
     } catch { $script:UiSmoke.Errors.Add($_.Exception.Message) }
 }
 $report=[pscustomobject]@{

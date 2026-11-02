@@ -130,8 +130,9 @@ class PackageTests(unittest.TestCase):
                 data=('public-fixture-'+name).encode();(folder/name).write_bytes(data)
                 hashes[name]=hashlib.sha256(data).hexdigest()
             (folder/'checksums.json').write_text(json.dumps(hashes))
-        for name in ('relayctl.py','install.sh','README.md','client/windows/Start.cmd',
+        for name in ('relayctl.py','keyservice.py','install.sh','README.md','deploy/civ6-relay-keys.service','client/windows/Start.cmd',
                 'client/windows/Civ6Relay.ps1','client/windows/LiveMonitor.cs','client/windows/README.txt',
+                'client/windows/KeyAccess.ps1','client/windows/KeyLease.ps1',
                 'client/launcher/src/main.rs',
                 'vendor/easytier/licenses/LICENSE.txt','vendor/linux-amd64/licenses/LICENSE.txt',
                 'vendor/sources/wireguard-tools.tar.xz','build/source.txt','scripts/source.py',
@@ -143,6 +144,9 @@ class PackageTests(unittest.TestCase):
             'Desktop.ps1':b'\xef\xbb\xbf# desktop script fixture\r\n',
             'Desktop.xaml':'<Window Title="联机助手" />\r\n'.encode('utf-8'),
             'DesktopModel.cs':b'// desktop model fixture\r\n',
+            'Themes.json':b'{"classic":{},"civ6":{}}\n',
+            'KeyAccess.ps1':b'\xef\xbb\xbf# key access fixture\n',
+            'KeyLease.ps1':b'\xef\xbb\xbf# key lease fixture\n',
         }
         for name,data in self.desktop.items():(self.root/'client/windows'/name).write_bytes(data)
         self.marker='dummy-private-package-marker'
@@ -211,7 +215,8 @@ class PackageTests(unittest.TestCase):
             common.name,'civ6-relay-server-'+packaging.VERSION+'-linux-amd64.tar.gz'})
 
     def test_private_source_files_are_rejected_before_archiving(self):
-        for name in ('profile.json','common-profile.json','state.json','preferences.json'):
+        for name in ('profile.json','common-profile.json','state.json','preferences.json','access-key.json',
+                     'server-session.json','appearance.json','service.json','access.sqlite'):
             with self.subTest(name=name):
                 path=self.root/'client/windows'/name;path.write_text(self.marker)
                 try:

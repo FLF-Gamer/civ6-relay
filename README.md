@@ -1,18 +1,18 @@
-# 文明6联机助手 3.4.4-preview
+# 文明6联机助手 3.5.2-preview
 
 让 Windows 玩家通过虚拟局域网联机：优先玩家直连，无法直连时由自己的 Linux 服务器中继。在文明6中选择 **多人游戏 → 局域网**，即可一起建房、加入游戏。
 
-[发布包](https://github.com/FLF-Gamer/civ6-relay/releases/tag/v3.4.4-preview) · [玩家使用](#windows-快速开始) · [服务端部署](#服务端部署) · [源码构建](#源码构建)
+[下载版本（3.5.2 预览版）](https://github.com/FLF-Gamer/civ6-relay/releases/tag/v3.5.2-preview) · [玩家使用](#windows-快速开始) · [服务端部署](#服务端部署) · [源码构建](#源码构建)
 
 ![联机大厅：填写昵称、服务器 IP 和端口后连接网络](docs/images/client-lobby.png)
 
-客户端采用黑白灰界面，使用蓝金图标。选中导航和当前主操作使用黑底白字，可用输入框有清晰边框，连接期间锁定的输入框使用淡灰样式。
+客户端提供 **黑白** 与 **文明6** 两套主题，可在 **设置 → 外观** 即时切换并自动保存。文明6主题使用深灰蓝侧栏、柔和金色选中项与羊皮纸背景。主题说明见 [外观主题](docs/client-themes.md)。下方截图展示黑白主题。
 
 本文截图由实际 Windows 客户端生成；其中的昵称、IP 和延迟均为演示数据，不含真实服务器地址或接入信息。
 
 ## Windows 快速开始
 
-适用于 **Windows 10/11 x64**。所有玩家使用同一服务器导出的同一份 `windows.zip`，不需要分别打包。
+适用于 **Windows 10/11 x64**。自建服务器可继续使用同一份 `windows.zip`；提供 Key 接入的服务器使用通用 Windows 客户端。
 
 1. 向服务器搭建者获取 `windows.zip`，并确认服务器 IP 和端口。
 2. **完整解压 ZIP**，在解压后的文件夹中双击 `Civ6Relay.exe`，允许管理员权限。保留同目录的其他文件。
@@ -22,7 +22,13 @@
 
 连接成功后，主按钮会切换为“断开连接”；昵称、服务器 IP 和端口暂时锁定，断开后可以修改。点击“保存设置”可保存这三项，下次启动自动读取。
 
-> GitHub Release 中的 Windows 模板用于服务器打包，不含服务器接入配置。玩家请使用搭建者导出的 `windows.zip`。
+> 自建服务器玩家使用搭建者导出的 `windows.zip`。Key 接入使用通用客户端，由所填服务器返回连接配置。
+
+## Key 接入
+
+服务器提供 Key 接入时，填写地址和接入端口，点击 **获取 Key**，或直接填入朋友提供的 Key 后连接。一起联机的玩家填写同一个 Key。不需要 Key 的服务器可以留空连接；主动获取时提示“此服务器无需 Key。”。
+
+Key 模式默认关闭，由服务器管理员显式开启。Key 由所填服务器签发，有效 48 小时；当前未接入支付。自建服务器保留免费使用方式。部署、端口与使用说明见 [可选 Key 服务](docs/key-access.md)。
 
 ## 客户端界面
 
@@ -52,10 +58,13 @@
 
 ![设置页：连接偏好、网络诊断和组件检查](docs/images/client-settings.png)
 
+- **外观**：选择黑白或文明6主题，立即生效，重启后保留选择。
 - **关闭窗口时自动断开连接**：默认开启；取消后，关闭窗口会保留组网进程。该开关只对本次运行生效。
 - **保存连接设置**：保存联机大厅填写的昵称、服务器 IP 和端口。
 - **网络诊断**：点击“开始诊断”，查看当前连接、玩家路径、广播和防火墙等信息。
 - **检查组件**：检查并安装或修复组网所需组件；需要替换组件时，先断开连接。
+- **关于与更新**：查看客户端版本，点击 GitHub 地址打开项目主页，或点击“下载新版”进入 Releases。
+- **查询服务端版本**：查询大厅中所填服务器的 HTTPS 接入端口，不需要昵称或 Key，也可在连接期间查询。旧服务器未提供接口时会明确提示。
 
 诊断和检查结果显示在窗口底部，并写入运行日志。排查问题时可复制完整诊断结果，并注明谁建房、谁看不到房间。
 
@@ -81,8 +90,8 @@ Release 完整安装包已包含服务端和 Windows 组件，推荐用于部署
 在服务器上执行：
 
 ```bash
-curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.4.4-preview/civ6-relay-server-3.4.4-preview-linux-amd64.tar.gz
-tar -xzf civ6-relay-server-3.4.4-preview-linux-amd64.tar.gz
+curl -fLO https://github.com/FLF-Gamer/civ6-relay/releases/download/v3.5.2-preview/civ6-relay-server-3.5.2-preview-linux-amd64.tar.gz
+tar -xzf civ6-relay-server-3.5.2-preview-linux-amd64.tar.gz
 cd civ6-relay
 sudo bash install.sh --endpoint SERVER_IP --port 9527
 sudo civ6-relay status

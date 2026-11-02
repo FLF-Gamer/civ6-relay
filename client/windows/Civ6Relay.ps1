@@ -7,6 +7,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:PackageRoot = $PSScriptRoot
+$script:ClientVersion = '3.5.2-preview'
+$script:RepositoryUrl = 'https://github.com/FLF-Gamer/civ6-relay'
 $script:ManagedRoot = Join-Path $env:ProgramData 'Civ6RelayMesh'
 $script:ManagedConfig = Join-Path $script:ManagedRoot 'network.toml'
 $script:RpcPort = 15887
@@ -17,6 +19,14 @@ $script:LiveMessages = New-Object 'Collections.Generic.Queue[string]'
 $script:LiveLogDropped = 0L
 $script:LiveLogTotal = 0L
 $script:ComponentFiles = @('easytier-core.exe','easytier-cli.exe','wintun.dll','WinDivert64.sys')
+. (Join-Path $PSScriptRoot 'KeyAccess.ps1')
+
+function Open-ProjectPage {
+    param([ValidateSet('Repository','Releases')][string]$Page='Repository')
+    $url = $script:RepositoryUrl
+    if ($Page -eq 'Releases') { $url += '/releases' }
+    Start-Process -FilePath $url | Out-Null
+}
 
 function New-ClientPreferences {
     param([string]$DisplayName, [string]$Endpoint, [string]$Port)
@@ -26,21 +36,26 @@ function New-ClientPreferences {
     }
     $Endpoint = $Endpoint.Trim()
     $address = $null
-    if ($Endpoint -notmatch '^\d{1,3}(\.\d{1,3}){3}$' -or
-        ![Net.IPAddress]::TryParse($Endpoint, [ref]$address) -or
-        $address.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork) {
-        throw '请填写服务器 IPv4 地址，不要包含协议或端口。'
+    $isIP = [Net.IPAddress]::TryParse($Endpoint, [ref]$address)
+    $isName = $Endpoint -match '^(?=.{1,253}$)[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$' -and $Endpoint -notmatch '^[0-9.]+$'
+    if ((!$isIP -and !$isName) -or ($isIP -and $address.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork)) {
+        throw '请填写服务器 IPv4 地址或域名，不要包含协议、路径或端口。'
     }
     $portNumber = 0
-    if (![int]::TryParse($Port, [ref]$portNumber) -or $portNumber -lt 1024 -or $portNumber -gt 65535 -or $portNumber -eq $script:RpcPort) {
-        throw '端口须为 1024–65535，不能占用本地管理端口。'
+    if (![int]::TryParse($Port, [ref]$portNumber) -or $portNumber -lt 1 -or $portNumber -gt 65535 -or $portNumber -eq $script:RpcPort) {
+        throw '端口须为 1–65535，不能占用本地管理端口。'
     }
-    return [pscustomobject]@{display_name=$DisplayName; endpoint=$address.ToString(); port=$portNumber}
+    return [pscustomobject]@{display_name=$DisplayName; endpoint=$(if ($isIP) { $address.ToString() } else { $Endpoint.ToLowerInvariant() }); port=$portNumber}
 }
 
 function Get-ClientPreferences {
     $path = Join-Path $script:ManagedRoot 'preferences.json'
     if (!(Test-Path -LiteralPath $path -PathType Leaf)) {
+        $draft = Join-Path $script:ManagedRoot 'access-key.json'
+        if (Test-Path -LiteralPath $draft -PathType Leaf) {
+            $saved = [IO.File]::ReadAllText($draft) | ConvertFrom-Json
+            return [pscustomobject]@{display_name='';endpoint=[string]$saved.endpoint;port=[string]$saved.port}
+        }
         return [pscustomobject]@{display_name=''; endpoint=''; port=''}
     }
     $saved = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -86,6 +101,24 @@ function Save-ClientPreferences {
     return $saved
 }
 
+function Get-DesktopTheme {
+    $path = Join-Path $script:ManagedRoot 'appearance.json'
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+        try {
+            $saved = [IO.File]::ReadAllText($path) | ConvertFrom-Json
+            if ($saved.theme -in @('classic','civ6')) { return [string]$saved.theme }
+        } catch { }
+    }
+    return 'classic'
+}
+
+function Save-DesktopTheme {
+    param([ValidateSet('classic','civ6')][string]$Name)
+    Protect-ManagedDirectory
+    [IO.File]::WriteAllText((Join-Path $script:ManagedRoot 'appearance.json'),
+        (@{theme=$Name} | ConvertTo-Json -Compress), (New-Object Text.UTF8Encoding($false)))
+}
+
 function Test-Base64Key {
     param([string]$Key)
     try { return ($Key -cmatch '^[A-Za-z0-9+/]{43}=$' -and [Convert]::FromBase64String($Key).Length -eq 32) }
@@ -104,11 +137,17 @@ function Get-DeviceInstanceId {
 }
 
 function Get-Profile {
+    param([object]$ServerAccess=$null)
+    $preferences = Get-ClientPreferences
     $path = Join-Path $script:PackageRoot 'profile.json'
-    if (!(Test-Path -LiteralPath $path -PathType Leaf)) {
-        throw '客户端配置缺失，请完整解压 ZIP。'
+    if (!$ServerAccess -and !(Test-Path -LiteralPath $path -PathType Leaf)) {
+        $ServerAccess = Get-SavedServerAccess $preferences
     }
-    $profile = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($ServerAccess) {
+        $profile = $ServerAccess.profile | ConvertTo-Json -Depth 6 | ConvertFrom-Json
+    } elseif (Test-Path -LiteralPath $path -PathType Leaf) {
+        $profile = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    } else { throw '尚未取得服务器连接配置，请先连接服务器。' }
     $fields = @('schema','version','backend','routing_mode','engine_version','player','instance_id','network_name',
                 'network','client_ip','mtu','server_public_key','client_public_key','credential_id','credential_secret','expires_at')
     $shared = $profile.schema -eq 4
@@ -151,8 +190,10 @@ function Get-Profile {
     if ($lastOctet -lt 2 -or $lastOctet -gt 254) { throw '玩家地址无效。' }
     if ([int]$profile.mtu -lt 1280 -or [int]$profile.mtu -gt 1400) { throw 'MTU 无效。' }
     if ([long]$profile.expires_at -le [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()) { throw '客户端配置已过期，请获取新版客户端。' }
-    $preferences = Get-ClientPreferences
     $preferences = New-ClientPreferences $preferences.display_name $preferences.endpoint $preferences.port
+    if ($ServerAccess) {
+        $preferences = New-ClientPreferences $preferences.display_name ([string]$ServerAccess.endpoint) ([string]$ServerAccess.port)
+    }
     foreach ($field in @('display_name','endpoint','port')) {
         $profile | Add-Member -NotePropertyName $field -NotePropertyValue $preferences.$field
     }
@@ -517,10 +558,20 @@ function Convert-MeshRoutes {
 }
 
 function Connect-Relay {
-    $profile = Get-Profile
+    param([object]$ServerAccess=$null)
+    $preferences = Get-ClientPreferences
+    $owned = Get-OwnRelayProcess
+    if (!$ServerAccess -and $owned) { $ServerAccess = Get-SavedServerAccess $preferences }
+    if (!$ServerAccess -and !$owned) {
+        $key = Get-SavedAccessKey $preferences.endpoint ([string]$preferences.port)
+        if (Test-UseServerAccess $preferences $key) {
+            $task = Start-KeyApiRequest $preferences.endpoint ([string]$preferences.port) '/v1/connect' @{key=$key;device_id=(Get-DeviceInstanceId)}
+            $ServerAccess = Complete-KeyApiRequest $task
+        }
+    }
+    $profile = Get-Profile $ServerAccess
     $config = Get-ConnectionConfig $profile
     $hash = Get-ConfigurationHash $config
-    $owned = Get-OwnRelayProcess
     if ($owned) {
         if (!(Test-ComponentCurrent)) { throw '组件版本已更新，请先断开旧客户端再连接。' }
         $saved = Get-Content -LiteralPath (Join-Path $script:ManagedRoot 'managed.json') -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -551,6 +602,10 @@ function Connect-Relay {
         $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $script:ManagedRoot 'managed.json') -Encoding UTF8
         if ($owned.WaitForExit(1000)) { throw '组网组件未启动成功，请检查驱动、安全软件提示或网络冲突。' }
         if ((Get-NetworkFingerprint) -ne $baseline) { throw '默认路由或 DNS 发生变化，已中止本次连接。' }
+        if ($ServerAccess) {
+            Save-ServerAccess $ServerAccess $preferences
+            Start-KeyLeaseWorker $ServerAccess $owned
+        }
     } catch {
         if (!$owned.HasExited) { Stop-RelayProcess $owned }
         throw
@@ -667,7 +722,7 @@ function Test-Relay {
     catch { throw '无法读取客户端配置，请检查设置或重新解压客户端。' }
     try { $snapshot = Get-MeshSnapshot }
     catch { $snapshot = [pscustomobject]@{Text='玩家连接状态：读取失败。';Peers=@()} }
-    $lines = @(('版本：3.4.4；时间：' + [DateTimeOffset]::Now.ToString('o')), $snapshot.Text,
+    $lines = @(('版本：' + $script:ClientVersion + '；时间：' + [DateTimeOffset]::Now.ToString('o')), $snapshot.Text,
         ('游戏虚拟网段：' + $profile.network))
     foreach ($peer in $snapshot.Peers) {
         $lines += $peer.Player + ' | ' + $peer.VirtualIP + ' | ' + $peer.Channel + ' | ' + $peer.RTT

@@ -9,7 +9,7 @@ import shutil
 import tarfile
 import zipfile
 ROOT=Path(__file__).resolve().parents[1]
-VERSION='3.4.4-preview'
+VERSION='3.5.2-preview'
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -31,7 +31,7 @@ def main():
                 raise SystemExit('Dependency checksum mismatch: '+name)
     if not (ROOT/'client/windows/Civ6Relay.exe').is_file():
         raise SystemExit('Windows launcher missing; run scripts/build-launcher.py first')
-    for name in ('Desktop.ps1','Desktop.xaml','DesktopModel.cs'):
+    for name in ('Desktop.ps1','Desktop.xaml','DesktopModel.cs','Themes.json','KeyAccess.ps1','KeyLease.ps1'):
         if not (ROOT/'client/windows'/name).is_file():
             raise SystemExit('Windows desktop runtime missing: '+name)
     output.mkdir(parents=True,exist_ok=True)
@@ -39,7 +39,8 @@ def main():
         retired=ROOT/'.build/retired-process-relay'
         for path in output.glob('*2.1.0*'):
             retired.mkdir(parents=True,exist_ok=True);shutil.move(str(path),str(retired/path.name))
-    files=[ROOT/x for x in ('relayctl.py','install.sh','README.md')]
+    files=[ROOT/x for x in ('relayctl.py','keyservice.py','install.sh','README.md')]
+    files.append(ROOT/'deploy/civ6-relay-keys.service')
     for directory in source_directories:
         files.extend(p for p in (ROOT/directory).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc')
     files.extend(ROOT/'vendor/linux-amd64'/x for x in ('wg','checksums.json'))
@@ -48,7 +49,8 @@ def main():
         if path.name.lower()=='packet.dll':
             raise SystemExit('Unsupported bundled dependency: Packet.dll')
         if path.is_symlink() or path.name in ('profile.json','common-profile.json','state.json','credentials.json','preferences.json',
-                'identity.json','managed.json','trusted-server.json','network.toml') or path.suffix in ('.key','.psk','.conf'):
+                'identity.json','managed.json','trusted-server.json','network.toml','access-key.json',
+                'server-session.json','appearance.json','service.json','access.sqlite','access.sqlite-journal') or path.suffix in ('.key','.psk','.conf'):
             raise SystemExit('Unexpected private/generated file: '+str(path))
     server=output/('civ6-relay-server-'+VERSION+'-linux-amd64.tar.gz')
     with tarfile.open(server,'w:gz') as archive:

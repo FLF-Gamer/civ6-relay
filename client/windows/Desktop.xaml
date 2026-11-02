@@ -3,26 +3,62 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="文明6联机助手" Width="1060" Height="740" MinWidth="880" MinHeight="620"
         WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
-        Background="#F9F9F9" Foreground="#202020" FontFamily="Segoe UI, Microsoft YaHei UI"
+        Background="{DynamicResource WindowBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI, Microsoft YaHei UI"
         FontSize="14" UseLayoutRounding="True" SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="12" GlassFrameThickness="0"/>
   </shell:WindowChrome.WindowChrome>
   <Window.Resources>
-    <SolidColorBrush x:Key="Accent" Color="#202020"/>
-    <SolidColorBrush x:Key="Muted" Color="#646464"/>
+    <SolidColorBrush x:Key="WindowBrush" Color="#F9F9F9"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SidebarBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SidebarBorderBrush" Color="#DDDDDD"/>
+    <SolidColorBrush x:Key="SidebarTextBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="SidebarMutedBrush" Color="#646464"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="#646464"/>
+    <SolidColorBrush x:Key="LabelBrush" Color="#4A4A4A"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#A8A8A8"/>
+    <SolidColorBrush x:Key="FocusBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="HoverBrush" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="PressedBrush" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="SelectionBrush" Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="SelectedSurfaceBrush" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="DisabledSurfaceBrush" Color="#F3F3F3"/>
+    <SolidColorBrush x:Key="DisabledBorderBrush" Color="#DDDDDD"/>
+    <SolidColorBrush x:Key="DisabledTextBrush" Color="#858585"/>
+    <SolidColorBrush x:Key="NavTextBrush" Color="#3A3A3A"/>
+    <SolidColorBrush x:Key="NavHoverBrush" Color="#E8E8E8"/>
+    <SolidColorBrush x:Key="NavSelectedBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="NavSelectedTextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="ScrollBrush" Color="#BBBBBB"/>
+    <SolidColorBrush x:Key="PillBrush" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="PillTextBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="HeaderBrush" Color="#F9F9F9"/>
+    <SolidColorBrush x:Key="LogBrush" Color="#FCFCFC"/>
+    <SolidColorBrush x:Key="NoticeBrush" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="NoticeTextBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="ErrorTextBrush" Color="#8A3333"/>
+    <SolidColorBrush x:Key="StatusIdleBrush" Color="#BBBBBB"/>
+    <SolidColorBrush x:Key="StatusActiveBrush" Color="#202020"/>
+    <SolidColorBrush x:Key="StatusPendingBrush" Color="#646464"/>
     <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/></Style>
     <Style x:Key="FieldLabel" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#4A4A4A"/><Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{DynamicResource LabelBrush}"/><Setter Property="FontSize" Value="12"/>
       <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
     <Style TargetType="TextBox">
       <Setter Property="Height" Value="42"/><Setter Property="Padding" Value="12,8"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
-      <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#A8A8A8"/>
-      <Setter Property="BorderThickness" Value="1"/><Setter Property="Foreground" Value="#202020"/>
-      <Setter Property="SelectionBrush" Value="#E0E0E0"/><Setter Property="CaretBrush" Value="#202020"/>
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+      <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}"/><Setter Property="CaretBrush" Value="{DynamicResource TextBrush}"/>
       <Setter Property="Template">
         <Setter.Value><ControlTemplate TargetType="TextBox">
           <Border x:Name="FieldBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
@@ -34,9 +70,9 @@
                           VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"/>
           </Border>
           <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FieldBorder" Property="BorderBrush" Value="#646464"/></Trigger>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="FieldBorder" Property="BorderBrush" Value="#202020"/><Setter TargetName="FieldBorder" Property="BorderThickness" Value="2"/><Setter TargetName="FieldBorder" Property="Background" Value="White"/></Trigger>
-            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="FieldBorder" Property="Background" Value="#F3F3F3"/><Setter TargetName="FieldBorder" Property="BorderBrush" Value="#DDDDDD"/><Setter Property="Foreground" Value="#858585"/></Trigger>
+            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FieldBorder" Property="BorderBrush" Value="{DynamicResource MutedBrush}"/></Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="FieldBorder" Property="BorderBrush" Value="{DynamicResource TextBrush}"/><Setter TargetName="FieldBorder" Property="BorderThickness" Value="2"/><Setter TargetName="FieldBorder" Property="Background" Value="{DynamicResource SurfaceBrush}"/></Trigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="FieldBorder" Property="Background" Value="{DynamicResource DisabledSurfaceBrush}"/><Setter TargetName="FieldBorder" Property="BorderBrush" Value="{DynamicResource DisabledBorderBrush}"/><Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/></Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate></Setter.Value>
       </Setter>
@@ -44,68 +80,82 @@
     <Style x:Key="ButtonBase" TargetType="Button">
       <Setter Property="Height" Value="40"/><Setter Property="Padding" Value="18,0"/>
       <Setter Property="Cursor" Value="Hand"/><Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="#202020"/>
-      <Setter Property="BorderBrush" Value="#A8A8A8"/><Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
         <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7" Padding="{TemplateBinding Padding}">
           <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#838383"/></Trigger>
-          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ButtonBorder" Property="Background" Value="#F0F0F0"/><Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#DDDDDD"/><Setter Property="Foreground" Value="#929292"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ButtonBorder" Property="Background" Value="{DynamicResource PillBrush}"/><Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{DynamicResource DisabledBorderBrush}"/><Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
       <Style.Triggers>
-        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E8E8E8"/></Trigger>
-        <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="#E8E8E8"/></Trigger>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger>
+        <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource PressedBrush}"/></Trigger>
       </Style.Triggers>
     </Style>
     <Style TargetType="Button" BasedOn="{StaticResource ButtonBase}"/>
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-      <Setter Property="Background" Value="{StaticResource Accent}"/><Setter Property="Foreground" Value="White"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+      <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
       <Style.Triggers>
-        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#3A3A3A"/><Setter Property="BorderBrush" Value="#3A3A3A"/></Trigger>
-        <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="#3A3A3A"/><Setter Property="BorderBrush" Value="#838383"/></Trigger>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/></Trigger>
+        <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource PrimaryPressedBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger>
       </Style.Triggers>
     </Style>
     <Style x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
       <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
-      <Setter Property="Foreground" Value="#202020"/><Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="FontWeight" Value="Normal"/>
       <Setter Property="Padding" Value="4,0"/>
     </Style>
     <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
       <Setter Property="Width" Value="42"/><Setter Property="Height" Value="36"/>
       <Setter Property="Padding" Value="0"/><Setter Property="Background" Value="Transparent"/>
-      <Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="#646464"/>
+      <Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
     </Style>
     <Style x:Key="Navigation" TargetType="RadioButton">
       <Setter Property="Height" Value="46"/><Setter Property="Margin" Value="12,0,12,8"/>
-      <Setter Property="Foreground" Value="#3A3A3A"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Foreground" Value="{DynamicResource NavTextBrush}"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
         <Border x:Name="NavBorder" CornerRadius="8" Background="Transparent" Padding="16,0">
           <ContentPresenter VerticalAlignment="Center"/>
         </Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBorder" Property="Background" Value="#E8E8E8"/><Setter Property="Foreground" Value="#202020"/></Trigger>
-          <Trigger Property="IsChecked" Value="True"><Setter TargetName="NavBorder" Property="Background" Value="#202020"/><Setter Property="Foreground" Value="White"/></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NavBorder" Property="Background" Value="{DynamicResource NavHoverBrush}"/><Setter Property="Foreground" Value="{DynamicResource NavTextBrush}"/></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="NavBorder" Property="Background" Value="{DynamicResource NavSelectedBrush}"/><Setter Property="Foreground" Value="{DynamicResource NavSelectedTextBrush}"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="ThemeChoice" TargetType="RadioButton">
+      <Setter Property="Height" Value="44"/><Setter Property="MinWidth" Value="128"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
+        <Border x:Name="ChoiceBorder" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" CornerRadius="7" Padding="14,0">
+          <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ChoiceBorder" Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="ChoiceBorder" Property="Background" Value="{DynamicResource SelectedSurfaceBrush}"/><Setter TargetName="ChoiceBorder" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/><Setter TargetName="ChoiceBorder" Property="BorderThickness" Value="2"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ChoiceBorder" Property="BorderBrush" Value="{DynamicResource FocusBrush}"/></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style TargetType="CheckBox">
       <Setter Property="MinHeight" Value="24"/>
-      <Setter Property="Foreground" Value="#303030"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
         <StackPanel Orientation="Horizontal">
-          <Border x:Name="CheckBorder" Width="18" Height="18" CornerRadius="5" Background="White" BorderBrush="#949494" BorderThickness="1" Margin="0,0,9,0">
-            <Path x:Name="CheckMark" Data="M 4,9 L 7,12 L 13,6" Stroke="White" StrokeThickness="1.8" Visibility="Collapsed"/>
+          <Border x:Name="CheckBorder" Width="18" Height="18" CornerRadius="5" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" Margin="0,0,9,0">
+            <Path x:Name="CheckMark" Data="M 4,9 L 7,12 L 13,6" Stroke="{DynamicResource PrimaryTextBrush}" StrokeThickness="1.8" Visibility="Collapsed"/>
           </Border>
           <ContentPresenter VerticalAlignment="Center"/>
         </StackPanel>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckBorder" Property="Background" Value="#202020"/><Setter TargetName="CheckBorder" Property="BorderBrush" Value="#202020"/><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="CheckBorder" Property="BorderBrush" Value="#202020"/></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/><Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
@@ -114,7 +164,7 @@
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ScrollBar">
         <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True">
           <Track.DecreaseRepeatButton><RepeatButton x:Name="DecreaseButton" Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/></Track.DecreaseRepeatButton>
-          <Track.Thumb><Thumb><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="#BBBBBB" CornerRadius="4" Margin="1"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+          <Track.Thumb><Thumb><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="{DynamicResource ScrollBrush}" CornerRadius="4" Margin="1"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
           <Track.IncreaseRepeatButton><RepeatButton x:Name="IncreaseButton" Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/></Track.IncreaseRepeatButton>
         </Track>
         <ControlTemplate.Triggers>
@@ -140,35 +190,35 @@
     <Style TargetType="ListBoxItem">
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
-        <Border x:Name="PeerBorder" Background="White" BorderBrush="#E8E8E8" BorderThickness="0,0,0,1" Padding="24,14"><ContentPresenter/></Border>
+        <Border x:Name="PeerBorder" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,14"><ContentPresenter/></Border>
         <ControlTemplate.Triggers>
-          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PeerBorder" Property="Background" Value="#F9F9F9"/></Trigger>
-          <Trigger Property="IsSelected" Value="True"><Setter TargetName="PeerBorder" Property="Background" Value="#F0F0F0"/></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PeerBorder" Property="Background" Value="{DynamicResource HoverBrush}"/></Trigger>
+          <Trigger Property="IsSelected" Value="True"><Setter TargetName="PeerBorder" Property="Background" Value="{DynamicResource PillBrush}"/></Trigger>
         </ControlTemplate.Triggers>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <DataTemplate x:Key="PeerTemplate">
       <Grid MinHeight="38">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="132"/><ColumnDefinition Width="106"/><ColumnDefinition Width="94"/><ColumnDefinition Width="74"/></Grid.ColumnDefinitions>
-        <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Player}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding VirtualIP}" Foreground="#646464" FontFamily="Consolas" FontSize="11" Margin="0,4,0,0"/></StackPanel>
-        <Border x:Name="PathPill" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#F0F0F0" CornerRadius="5" Padding="9,5">
-          <TextBlock x:Name="PathText" Text="{Binding Channel}" FontSize="11" Foreground="#646464"/>
+        <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Player}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding VirtualIP}" Foreground="{DynamicResource MutedBrush}" FontFamily="Consolas" FontSize="11" Margin="0,4,0,0"/></StackPanel>
+        <Border x:Name="PathPill" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{DynamicResource PillBrush}" CornerRadius="5" Padding="9,5">
+          <TextBlock x:Name="PathText" Text="{Binding Channel}" FontSize="11" Foreground="{DynamicResource PillTextBrush}"/>
         </Border>
-        <TextBlock Grid.Column="2" Text="{Binding RTT}" FontSize="18" FontWeight="SemiBold" Foreground="#202020" TextTrimming="CharacterEllipsis" ToolTip="对玩家虚拟 IP 的往返延迟"/>
-        <TextBlock Grid.Column="3" Text="{Binding LinkRTT}" Foreground="#646464" FontSize="12" ToolTip="中继时为到中继节点的延迟"/>
-        <TextBlock Grid.Column="4" Text="{Binding SampleTime}" Foreground="#646464" FontFamily="Consolas" FontSize="11"/>
+        <TextBlock Grid.Column="2" Text="{Binding RTT}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" ToolTip="对玩家虚拟 IP 的往返延迟"/>
+        <TextBlock Grid.Column="3" Text="{Binding LinkRTT}" Foreground="{DynamicResource MutedBrush}" FontSize="12" ToolTip="中继时为到中继节点的延迟"/>
+        <TextBlock Grid.Column="4" Text="{Binding SampleTime}" Foreground="{DynamicResource MutedBrush}" FontFamily="Consolas" FontSize="11"/>
       </Grid>
       <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding PathKind}" Value="Direct"><Setter TargetName="PathPill" Property="Background" Value="#F0F0F0"/><Setter TargetName="PathText" Property="Foreground" Value="#333333"/></DataTrigger>
-        <DataTrigger Binding="{Binding PathKind}" Value="Relay"><Setter TargetName="PathPill" Property="Background" Value="#F0F0F0"/><Setter TargetName="PathText" Property="Foreground" Value="#333333"/></DataTrigger>
+        <DataTrigger Binding="{Binding PathKind}" Value="Direct"><Setter TargetName="PathPill" Property="Background" Value="{DynamicResource PillBrush}"/><Setter TargetName="PathText" Property="Foreground" Value="{DynamicResource PillTextBrush}"/></DataTrigger>
+        <DataTrigger Binding="{Binding PathKind}" Value="Relay"><Setter TargetName="PathPill" Property="Background" Value="{DynamicResource PillBrush}"/><Setter TargetName="PathText" Property="Foreground" Value="{DynamicResource PillTextBrush}"/></DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>
   </Window.Resources>
-  <Border Background="#F9F9F9" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="12">
+  <Border Background="{DynamicResource WindowBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12">
     <Grid>
       <Grid.ColumnDefinitions><ColumnDefinition Width="176"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-      <Border Grid.RowSpan="2" Background="White" BorderBrush="#DDDDDD" BorderThickness="0,0,1,0" CornerRadius="11,0,0,11">
+      <Border Grid.RowSpan="2" Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource SidebarBorderBrush}" BorderThickness="0,0,1,0" CornerRadius="11,0,0,11">
         <Grid>
           <Grid.RowDefinitions><RowDefinition Height="150"/><RowDefinition Height="*"/><RowDefinition Height="90"/></Grid.RowDefinitions>
           <StackPanel Margin="27,30,0,0">
@@ -178,7 +228,7 @@
               <Ellipse Canvas.Left="13" Width="12" Height="12" Fill="#E4C887"/>
               <Ellipse Canvas.Left="26" Canvas.Top="18" Width="12" Height="12" Fill="#9C783E"/>
             </Canvas>
-            <TextBlock Text="文明6 联机" Foreground="#202020" FontSize="17" FontWeight="SemiBold"/>
+            <TextBlock Text="文明6 联机" Foreground="{DynamicResource SidebarTextBrush}" FontSize="17" FontWeight="SemiBold"/>
           </StackPanel>
           <StackPanel Grid.Row="1" Margin="0,15,0,0">
             <RadioButton x:Name="NavLobby" Style="{StaticResource Navigation}" GroupName="Page" IsChecked="True">
@@ -192,100 +242,141 @@
             </RadioButton>
           </StackPanel>
           <StackPanel Grid.Row="2" Margin="28,0,20,24" VerticalAlignment="Bottom">
-            <StackPanel Orientation="Horizontal"><Ellipse x:Name="ConnectionDot" Width="6" Height="6" Fill="#BBBBBB" Margin="0,0,8,0"/><TextBlock x:Name="ConnectionLabel" Text="尚未连接" Foreground="#646464" FontSize="12"/></StackPanel>
-            <TextBlock Text="一起开始下一回合" Foreground="#646464" FontSize="10" Margin="14,8,0,0"/>
+            <StackPanel Orientation="Horizontal"><Ellipse x:Name="ConnectionDot" Width="6" Height="6" Fill="{DynamicResource StatusIdleBrush}" Margin="0,0,8,0"/><TextBlock x:Name="ConnectionLabel" Text="尚未连接" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="12"/></StackPanel>
+            <TextBlock Text="一起开始下一回合" Foreground="{DynamicResource SidebarMutedBrush}" FontSize="10" Margin="14,8,0,0"/>
           </StackPanel>
         </Grid>
       </Border>
       <Grid x:Name="TitleBar" Grid.Column="1" Background="Transparent">
-        <TextBlock Text="CIV6 RELAY" Margin="28,0,0,0" FontSize="10" Foreground="#646464" FontWeight="SemiBold"/>
+        <TextBlock Text="CIV6 RELAY" Margin="28,0,0,0" FontSize="10" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,3,7,0" VerticalAlignment="Top">
-          <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}" ToolTip="最小化"><Path Data="M 0,5 L 10,5" Stroke="#646464" StrokeThickness="1" Width="10" Height="10"/></Button>
-          <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" ToolTip="最大化"><Rectangle Width="9" Height="9" Stroke="#646464" StrokeThickness="1"/></Button>
-          <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" ToolTip="关闭"><Path Data="M 0,0 L 10,10 M 0,10 L 10,0" Stroke="#646464" StrokeThickness="1.2" Width="10" Height="10"/></Button>
+          <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}" ToolTip="最小化"><Path Data="M 0,5 L 10,5" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1" Width="10" Height="10"/></Button>
+          <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" ToolTip="最大化"><Rectangle Width="9" Height="9" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1"/></Button>
+          <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" ToolTip="关闭"><Path Data="M 0,0 L 10,10 M 0,10 L 10,0" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.2" Width="10" Height="10"/></Button>
         </StackPanel>
       </Grid>
       <Grid Grid.Column="1" Grid.Row="1" Margin="28,14,28,24">
         <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <ScrollViewer x:Name="LobbyPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <Grid MinHeight="546">
-            <Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition Height="194"/><RowDefinition Height="*"/><RowDefinition Height="28"/></Grid.RowDefinitions>
-            <StackPanel><TextBlock Text="联机大厅" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="和朋友一起，进入同一个局域网。" Foreground="#646464" FontSize="12" Margin="0,9,0,0"/></StackPanel>
-            <Border Grid.Row="1" Background="White" CornerRadius="12" BorderBrush="#E8E8E8" BorderThickness="1" Padding="24,19" Margin="0,0,0,18">
+          <Grid MinHeight="630">
+            <Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="28"/></Grid.RowDefinitions>
+            <StackPanel><TextBlock Text="联机大厅" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="和朋友一起，进入同一个局域网。" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,9,0,0"/></StackPanel>
+            <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="24,19" Margin="0,0,0,18">
               <Grid>
-                <Grid.RowDefinitions><RowDefinition Height="28"/><RowDefinition Height="66"/><RowDefinition Height="40"/></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="28"/><RowDefinition Height="66"/><RowDefinition Height="66"/><RowDefinition Height="40"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <TextBlock Text="连接网络" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Top"/>
                 <Grid Grid.Row="1">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
                   <StackPanel Margin="0,0,16,0"><TextBlock Text="玩家昵称" Style="{StaticResource FieldLabel}"/><TextBox x:Name="NameInput" MaxLength="24" TabIndex="0"/></StackPanel>
-                  <StackPanel Grid.Column="1" Margin="0,0,16,0"><TextBlock Text="服务器 IP" Style="{StaticResource FieldLabel}"/><TextBox x:Name="ServerInput" MaxLength="15" TabIndex="1"/></StackPanel>
+                  <StackPanel Grid.Column="1" Margin="0,0,16,0"><TextBlock Text="服务器地址" Style="{StaticResource FieldLabel}"/><TextBox x:Name="ServerInput" MaxLength="253" TabIndex="1"/></StackPanel>
                   <StackPanel Grid.Column="2"><TextBlock Text="端口" Style="{StaticResource FieldLabel}"/><TextBox x:Name="PortInput" MaxLength="5" TabIndex="2"/></StackPanel>
                 </Grid>
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,-8">
-                  <Button x:Name="ConnectButton" Content="连接网络" Style="{StaticResource PrimaryButton}" Width="132" TabIndex="3"/>
+                <Grid Grid.Row="2" Margin="0,7,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="112"/><ColumnDefinition Width="72"/></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Key（可选）" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/><TextBox x:Name="KeyInput" MaxLength="80" TabIndex="3" Height="36" Padding="10,5"/></StackPanel>
+                  <Button Grid.Column="1" x:Name="GenerateKeyButton" Content="获取 Key" Height="36" VerticalAlignment="Bottom" Margin="10,0,0,2" Padding="12,0" TabIndex="4"/>
+                  <Button Grid.Column="2" x:Name="CopyKeyButton" Content="复制" Height="36" VerticalAlignment="Bottom" Margin="8,0,0,2" Padding="12,0" TabIndex="5"/>
+                </Grid>
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,-8">
+                  <Button x:Name="ConnectButton" Content="连接网络" Style="{StaticResource PrimaryButton}" Width="132" TabIndex="6"/>
                   <Button x:Name="DisconnectButton" Content="断开连接" Style="{StaticResource PrimaryButton}" Width="132" Visibility="Collapsed"/>
                   <Button x:Name="LobbySaveButton" Content="保存设置" Style="{StaticResource LinkButton}" Margin="15,0,0,0"/>
                 </StackPanel>
+                <TextBlock Grid.Row="4" x:Name="KeyInfo" Foreground="{DynamicResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,13,0,0" Visibility="Collapsed"/>
               </Grid>
             </Border>
-            <Border Grid.Row="2" Background="White" CornerRadius="12" BorderBrush="#E8E8E8" BorderThickness="1" MinHeight="248" ClipToBounds="True">
+            <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" MinHeight="248" ClipToBounds="True">
               <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="64"/><RowDefinition Height="33"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Margin="24,0,0,0"><TextBlock Text="在线玩家" FontSize="15" FontWeight="SemiBold"/><Border Background="#202020" CornerRadius="5" Margin="10,0,0,0" VerticalAlignment="Center" Padding="7,2"><TextBlock x:Name="PlayerCount" Text="0" Foreground="White" FontSize="11"/></Border></StackPanel>
-                <TextBlock x:Name="StatusText" Text="未连接" HorizontalAlignment="Right" Margin="10,0,24,0" MaxWidth="430" TextTrimming="CharacterEllipsis" Foreground="#646464" FontSize="11"/>
-                <Border Grid.Row="1" Background="#F9F9F9" BorderBrush="#E8E8E8" BorderThickness="0,1" Padding="24,0">
+                <StackPanel Orientation="Horizontal" Margin="24,0,0,0"><TextBlock Text="在线玩家" FontSize="15" FontWeight="SemiBold"/><Border Background="{DynamicResource PrimaryBrush}" CornerRadius="5" Margin="10,0,0,0" VerticalAlignment="Center" Padding="7,2"><TextBlock x:Name="PlayerCount" Text="0" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="11"/></Border></StackPanel>
+                <TextBlock x:Name="StatusText" Text="未连接" HorizontalAlignment="Right" Margin="10,0,24,0" MaxWidth="430" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                <Border Grid.Row="1" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1" Padding="24,0">
                   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="132"/><ColumnDefinition Width="106"/><ColumnDefinition Width="94"/><ColumnDefinition Width="74"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="玩家" Foreground="#646464" FontSize="11"/><TextBlock Grid.Column="1" Text="连接方式" Foreground="#646464" FontSize="11"/><TextBlock Grid.Column="2" Text="实时延迟" Foreground="#646464" FontSize="11"/><TextBlock Grid.Column="3" Text="链路延迟" Foreground="#646464" FontSize="11"/><TextBlock Grid.Column="4" Text="更新于" Foreground="#646464" FontSize="11"/>
+                    <TextBlock Text="玩家" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="1" Text="连接方式" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="2" Text="实时延迟" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="3" Text="链路延迟" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="4" Text="更新于" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
                   </Grid>
                 </Border>
                 <ListBox x:Name="PlayerList" Grid.Row="2" ItemTemplate="{StaticResource PeerTemplate}"/>
                 <StackPanel x:Name="EmptyState" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,8,0,14">
-                  <Border Width="46" Height="46" Background="#F0F0F0" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,13">
-                    <Canvas Width="25" Height="23" VerticalAlignment="Center" HorizontalAlignment="Center"><Ellipse Canvas.Left="3" Canvas.Top="1" Width="7" Height="7" Stroke="#202020" StrokeThickness="1.3"/><Path Data="M 0,20 C 0,10 13,10 13,20 M 16,8 L 23,8 M 19.5,4.5 L 19.5,11.5" Stroke="#202020" StrokeThickness="1.3"/></Canvas>
+                  <Border Width="46" Height="46" Background="{DynamicResource PillBrush}" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,13">
+                    <Canvas Width="25" Height="23" VerticalAlignment="Center" HorizontalAlignment="Center"><Ellipse Canvas.Left="3" Canvas.Top="1" Width="7" Height="7" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.3"/><Path Data="M 0,20 C 0,10 13,10 13,20 M 16,8 L 23,8 M 19.5,4.5 L 19.5,11.5" Stroke="{DynamicResource TextBrush}" StrokeThickness="1.3"/></Canvas>
                   </Border>
-                  <TextBlock Text="暂无其他玩家" Foreground="#646464" HorizontalAlignment="Center" FontSize="13"/>
-                  <TextBlock Text="连接后，朋友会出现在这里" Foreground="#646464" HorizontalAlignment="Center" FontSize="11" Margin="0,7,0,0"/>
+                  <TextBlock Text="暂无其他玩家" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" FontSize="13"/>
+                  <TextBlock Text="连接后，朋友会出现在这里" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" FontSize="11" Margin="0,7,0,0"/>
                 </StackPanel>
               </Grid>
             </Border>
-            <TextBlock Grid.Row="3" Text="游戏入口：多人游戏 → 局域网" Foreground="#646464" FontSize="11" Margin="2,9,0,0"/>
+            <TextBlock Grid.Row="3" Text="游戏入口：多人游戏 → 局域网" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="2,9,0,0"/>
           </Grid>
         </ScrollViewer>
         <Grid x:Name="LogsPage" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="76"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-          <StackPanel><TextBlock Text="运行日志" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="查看连接状态与网络路径的实时变化。" Foreground="#646464" FontSize="12" Margin="0,9,0,0"/></StackPanel>
-          <Border Grid.Row="1" Background="White" CornerRadius="12" BorderBrush="#E8E8E8" BorderThickness="1" Padding="22">
+          <StackPanel><TextBlock Text="运行日志" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="查看连接状态与网络路径的实时变化。" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,9,0,0"/></StackPanel>
+          <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="22">
             <Grid>
               <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="*"/><RowDefinition Height="32"/></Grid.RowDefinitions>
               <StackPanel Orientation="Horizontal" VerticalAlignment="Top"><Button x:Name="CopyLogButton" Content="复制" Height="32" Padding="14,0" FontSize="12"/><Button x:Name="ExportLogButton" Content="导出日志" Height="32" Padding="14,0" Margin="8,0,0,0" FontSize="12"/><Button x:Name="ClearLogButton" Content="清空" Style="{StaticResource LinkButton}" Height="32" Margin="10,0,0,0" FontSize="12"/></StackPanel>
               <CheckBox x:Name="AutoScrollCheck" Content="自动滚动" IsChecked="True" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,0,0" FontSize="12"/>
-              <TextBox x:Name="LogBox" Grid.Row="1" Height="Auto" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas, Microsoft YaHei UI" FontSize="12" Background="#FCFCFC" BorderBrush="#E8E8E8" Padding="14" VerticalContentAlignment="Top"/>
-              <TextBlock x:Name="LogStatus" Grid.Row="2" Foreground="#646464" FontSize="11" Text="日志 0 条"/>
-              <TextBlock x:Name="LogFeedback" Grid.Row="2" Foreground="#202020" FontSize="11" HorizontalAlignment="Right"/>
+              <TextBox x:Name="LogBox" Grid.Row="1" Height="Auto" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas, Microsoft YaHei UI" FontSize="12" Background="{DynamicResource LogBrush}" BorderBrush="{DynamicResource BorderBrush}" Padding="14" VerticalContentAlignment="Top"/>
+              <TextBlock x:Name="LogStatus" Grid.Row="2" Foreground="{DynamicResource MutedBrush}" FontSize="11" Text="日志 0 条"/>
+              <TextBlock x:Name="LogFeedback" Grid.Row="2" Foreground="{DynamicResource TextBrush}" FontSize="11" HorizontalAlignment="Right"/>
             </Grid>
           </Border>
         </Grid>
         <ScrollViewer x:Name="SettingsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
-            <StackPanel Height="76"><TextBlock Text="设置" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="连接偏好与常用工具。" Foreground="#646464" FontSize="12" Margin="0,9,0,0"/></StackPanel>
-            <Border Background="White" CornerRadius="12" BorderBrush="#E8E8E8" BorderThickness="1" Padding="24" Margin="0,0,0,18">
+            <StackPanel Height="76"><TextBlock Text="设置" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="连接偏好与常用工具。" Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,9,0,0"/></StackPanel>
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="24" Margin="0,0,0,18">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock Text="外观" FontSize="15" FontWeight="SemiBold"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                  <RadioButton x:Name="ThemeClassicButton" GroupName="Theme" Style="{StaticResource ThemeChoice}" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal"><Border Background="#202020" BorderBrush="#A8A8A8" BorderThickness="1" Width="18" Height="18" CornerRadius="4" Margin="0,0,10,0"><Border Background="White" Width="7" HorizontalAlignment="Right" CornerRadius="0,3,3,0"/></Border><TextBlock Text="黑白"/></StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="ThemeCiv6Button" GroupName="Theme" Style="{StaticResource ThemeChoice}">
+                    <StackPanel Orientation="Horizontal"><Border Background="#2D3942" Width="18" Height="18" CornerRadius="4" Margin="0,0,10,0"><Border Background="#C3AB78" Width="7" HorizontalAlignment="Right" CornerRadius="0,3,3,0"/></Border><TextBlock Text="文明6"/></StackPanel>
+                  </RadioButton>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="24" Margin="0,0,0,18">
               <Grid><Grid.RowDefinitions><RowDefinition Height="32"/><RowDefinition Height="48"/><RowDefinition Height="42"/></Grid.RowDefinitions>
                 <TextBlock Text="连接偏好" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Top"/>
                 <CheckBox x:Name="AutoDisconnectCheck" Grid.Row="1" Content="关闭窗口时自动断开连接" IsChecked="True" VerticalAlignment="Top" Margin="0,5,0,0"/>
                 <Button x:Name="SaveButton" Grid.Row="2" Content="保存连接设置" HorizontalAlignment="Left"/>
               </Grid>
             </Border>
-            <Border Background="White" CornerRadius="12" BorderBrush="#E8E8E8" BorderThickness="1" Padding="24">
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="24" Margin="0,0,0,18">
               <Grid><Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="72"/><RowDefinition Height="72"/></Grid.RowDefinitions>
                 <TextBlock Text="网络工具" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Top"/>
-                <Grid Grid.Row="1"><StackPanel VerticalAlignment="Center"><TextBlock Text="网络诊断" FontWeight="SemiBold"/><TextBlock Text="查看当前连接及网络状态" FontSize="12" Foreground="#646464" Margin="0,7,0,0"/></StackPanel><Button x:Name="DiagnoseButton" Content="开始诊断" HorizontalAlignment="Right" VerticalAlignment="Center" Height="36" FontSize="12"/></Grid>
-                <Grid Grid.Row="2"><Grid.RowDefinitions><RowDefinition Height="1"/><RowDefinition Height="*"/></Grid.RowDefinitions><Border Height="1" Background="#E8E8E8"/><StackPanel Grid.Row="1" VerticalAlignment="Center"><TextBlock Text="客户端组件" FontWeight="SemiBold"/><TextBlock Text="检查并安装组网所需组件" FontSize="12" Foreground="#646464" Margin="0,7,0,0"/></StackPanel><Button x:Name="ComponentButton" Grid.Row="1" Content="检查组件" HorizontalAlignment="Right" VerticalAlignment="Center" Height="36" FontSize="12"/></Grid>
+                <Grid Grid.Row="1"><StackPanel VerticalAlignment="Center"><TextBlock Text="网络诊断" FontWeight="SemiBold"/><TextBlock Text="查看当前连接及网络状态" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/></StackPanel><Button x:Name="DiagnoseButton" Content="开始诊断" HorizontalAlignment="Right" VerticalAlignment="Center" Height="36" FontSize="12"/></Grid>
+                <Grid Grid.Row="2"><Grid.RowDefinitions><RowDefinition Height="1"/><RowDefinition Height="*"/></Grid.RowDefinitions><Border Height="1" Background="{DynamicResource BorderBrush}"/><StackPanel Grid.Row="1" VerticalAlignment="Center"><TextBlock Text="客户端组件" FontWeight="SemiBold"/><TextBlock Text="检查并安装组网所需组件" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0"/></StackPanel><Button x:Name="ComponentButton" Grid.Row="1" Content="检查组件" HorizontalAlignment="Right" VerticalAlignment="Center" Height="36" FontSize="12"/></Grid>
               </Grid>
+            </Border>
+            <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="24">
+              <StackPanel>
+                <TextBlock Text="关于与更新" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                <Grid Margin="0,0,0,10">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <TextBlock x:Name="ClientVersionText" FontWeight="SemiBold"/>
+                  <Button x:Name="ReleasesButton" Grid.Column="1" Content="下载新版" Height="36" FontSize="12"/>
+                </Grid>
+                <Button x:Name="GithubButton" Content="github.com/FLF-Gamer/civ6-relay" Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Height="30" FontSize="12" Padding="0" ToolTip="打开 GitHub 项目主页"/>
+                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,16"/>
+                <Grid>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <StackPanel Margin="0,0,16,0">
+                    <TextBlock x:Name="ServerVersionText" Text="服务端版本：尚未查询" TextWrapping="Wrap"/>
+                    <TextBlock Text="使用大厅填写的服务器地址和接入端口" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,7,0,0"/>
+                  </StackPanel>
+                  <Button x:Name="ServerVersionButton" Grid.Column="1" Content="查询服务端版本" Height="36" FontSize="12" VerticalAlignment="Center"/>
+                </Grid>
+              </StackPanel>
             </Border>
           </StackPanel>
         </ScrollViewer>
-        <Border x:Name="OperationPanel" Grid.Row="1" Background="#F0F0F0" BorderBrush="#E8E8E8" BorderThickness="1" CornerRadius="8" Padding="14,11" Margin="0,12,0,0" Visibility="Collapsed" MaxHeight="150">
-          <TextBox x:Name="OperationText" Height="Auto" MaxHeight="120" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Foreground="#333333" FontSize="12" Background="Transparent" BorderThickness="0" Padding="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
+        <Border x:Name="OperationPanel" Grid.Row="1" Background="{DynamicResource NoticeBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,11" Margin="0,12,0,0" Visibility="Collapsed" MaxHeight="150">
+          <TextBox x:Name="OperationText" Height="Auto" MaxHeight="120" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Foreground="{DynamicResource NoticeTextBrush}" FontSize="12" Background="Transparent" BorderThickness="0" Padding="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"/>
         </Border>
       </Grid>
     </Grid>

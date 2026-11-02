@@ -45,12 +45,15 @@ for folder, names in [
         path = directory / name
         if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != hashes.get(name):
             raise SystemExit('组件缺失或校验失败：' + name)
-for name in ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'Desktop.ps1', 'Desktop.xaml', 'DesktopModel.cs', 'LiveMonitor.cs', 'README.txt'):
+for name in ('Start.cmd', 'Civ6Relay.exe', 'Civ6Relay.ps1', 'Desktop.ps1', 'Desktop.xaml', 'DesktopModel.cs', 'Themes.json', 'LiveMonitor.cs', 'KeyAccess.ps1', 'KeyLease.ps1', 'README.txt'):
     if not (root / 'client/windows' / name).is_file():
         raise SystemExit('缺少客户端文件：' + name)
 PY
 install -d -m 755 "$target_dir" "$target_dir/bin" "$target_dir/client/windows/bin" "$target_dir/client/windows/licenses"
 install -m 755 "$source_dir/relayctl.py" "$target_dir/relayctl.py"
+if [[ -f $source_dir/keyservice.py ]]; then
+  install -m 755 "$source_dir/keyservice.py" "$target_dir/keyservice.py"
+fi
 for name in easytier-core easytier-cli; do
   install -m 755 "$source_dir/vendor/easytier/linux-x86_64/$name" "$target_dir/bin/$name"
 done
@@ -64,7 +67,7 @@ hashes['wg'] = json.loads((source / 'vendor/linux-amd64/checksums.json').read_te
 (target / 'bin/checksums.json').write_text(json.dumps(hashes, indent=2) + '\n')
 PY
 install -m 644 "$source_dir/README.md" "$target_dir/README.md"
-for name in Start.cmd Civ6Relay.exe Civ6Relay.ps1 Desktop.ps1 Desktop.xaml DesktopModel.cs LiveMonitor.cs README.txt; do
+for name in Start.cmd Civ6Relay.exe Civ6Relay.ps1 Desktop.ps1 Desktop.xaml DesktopModel.cs Themes.json LiveMonitor.cs KeyAccess.ps1 KeyLease.ps1 README.txt; do
   install -m 644 "$source_dir/client/windows/$name" "$target_dir/client/windows/$name"
 done
 for name in easytier-core.exe easytier-cli.exe wintun.dll WinDivert64.sys checksums.json; do
