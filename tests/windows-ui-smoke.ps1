@@ -371,6 +371,8 @@ $script:UiSmokeTimer.Add_Tick({
             8 {
                 if ($script:UiSmoke.VersionCalls -ne 2 -or (Get-UiSmokeElement $window 'ServerVersionText').Text -ne ('服务端版本：'+$script:ClientVersion)) { return }
                 Assert-UiSmoke ($script:UiSmoke.ConnectCalls -eq 1 -and $script:UiSmoke.DisconnectCalls -eq 0 -and $script:UiSmoke.Connected) 'Querying the server version interrupted the active network.'
+                Assert-UiSmokeVisible $window 'ServerVersionButton'
+                Assert-UiSmokeVisible $window 'ServerVersionText' 120 12
                 Save-UiSmokeScreenshot $window 'settings-version'
                 Invoke-UiSmokeClick $window 'DiagnoseButton'
             }

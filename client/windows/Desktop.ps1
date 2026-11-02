@@ -218,6 +218,8 @@ function Show-ModernRelayWindow {
                 $message = $c.ServerVersionText.Text + '；接口：v' + [string]$response.api_version + '；组网核心：' + [string]$response.engine_version
                 & $showOperation $message
                 Add-LiveLog $message
+                $window.UpdateLayout()
+                $c.ServerVersionButton.BringIntoView()
             } elseif ($ui.PendingKind -eq 'generate') {
                 $response = Complete-KeyApiRequest $ui.PendingTask
                 $c.KeyInput.Text = [string]$response.key
@@ -243,6 +245,10 @@ function Show-ModernRelayWindow {
         } catch {
             if ($ui.PendingKind -eq 'version') { $c.ServerVersionText.Text = '服务端版本：查询失败' }
             & $showOperation $_.Exception.Message $true
+            if ($ui.PendingKind -eq 'version') {
+                $window.UpdateLayout()
+                $c.ServerVersionButton.BringIntoView()
+            }
             $failureLabel = if ($ui.PendingKind -eq 'version') { '版本查询失败：' } else { '连接操作失败：' }
             Add-LiveLog ($failureLabel + $_.Exception.Message)
             if ($_.Exception.Data['AccessCode'] -eq 'KEY_REQUIRED') { [void]$c.KeyInput.Focus() }
