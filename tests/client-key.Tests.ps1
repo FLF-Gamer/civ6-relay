@@ -38,7 +38,7 @@ public sealed class KeyHttpFixture : IDisposable {
                 string value;
                 if (!Replies.TryDequeue(out value)) value = "{}";
                 context.Response.StatusCode = value.Contains("KEY_REQUIRED") ? 401 :
-                    value == "__404__" ? 404 : value == "__501__" ? 501 : 200;
+                    value == "__404__" ? 404 : value == "__501__" ? 501 : value == "__503__" ? 503 : 200;
                 context.Response.ContentType = "application/json; charset=utf-8";
                 var bytes = Encoding.UTF8.GetBytes(value); context.Response.ContentLength64 = bytes.Length;
                 context.Response.OutputStream.Write(bytes, 0, bytes.Length); context.Response.Close();
@@ -110,6 +110,20 @@ try {
     $invalid = $false
     try { Complete-ServerVersionRequest $task } catch { $invalid = $_.Exception.Message -eq '服务器未返回有效的版本信息。' }
     Assert $invalid 'Missing version information must not be presented as a successful query'
+    foreach ($kind in @('rooms','load')) {
+        $fixture.Replies.Enqueue('{"active_rooms":2,"max_rooms":4,"cpu_percent":12.5}')
+        $task = Start-ServerStatusRequest '127.0.0.1' ([string]$fixture.Port) $kind ([Threading.CancellationToken]::None)
+        $status = Complete-KeyApiRequest $task
+        Assert ($status.active_rooms -eq 2 -and $status.cpu_percent -eq 12.5) 'Server status response was not read.'
+        Assert ($fixture.Methods.ToArray()[-1] -eq 'GET' -and $fixture.Requests.ToArray()[-1] -eq ('/v1/'+$kind+' ')) 'Status query must not transmit a Key or device identity.'
+    }
+    foreach ($failure in @(@('__404__','STATUS_UNAVAILABLE'),@('__503__','STATUS_QUERY_FAILED'))) {
+        $fixture.Replies.Enqueue($failure[0])
+        $task = Start-ServerStatusRequest '127.0.0.1' ([string]$fixture.Port) 'rooms' ([Threading.CancellationToken]::None)
+        $expected = $false
+        try { Complete-KeyApiRequest $task } catch { $expected = $_.Exception.Data['AccessCode'] -eq $failure[1] }
+        Assert $expected 'Server status HTTP errors were not mapped correctly.'
+    }
     $script:OpenedUrls = New-Object 'Collections.Generic.List[string]'
     function Start-Process { param([string]$FilePath); $script:OpenedUrls.Add($FilePath) }
     Open-ProjectPage 'Repository'

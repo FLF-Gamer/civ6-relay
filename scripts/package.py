@@ -31,7 +31,7 @@ def main():
                 raise SystemExit('Dependency checksum mismatch: '+name)
     if not (ROOT/'client/windows/Civ6Relay.exe').is_file():
         raise SystemExit('Windows launcher missing; run scripts/build-launcher.py first')
-    for name in ('Desktop.ps1','Desktop.xaml','DesktopModel.cs','Themes.json','KeyAccess.ps1','KeyLease.ps1'):
+    for name in ('Desktop.ps1','Desktop.xaml','DesktopModel.cs','Themes.json','KeyAccess.ps1','KeyLease.ps1','ServerStatus.ps1'):
         if not (ROOT/'client/windows'/name).is_file():
             raise SystemExit('Windows desktop runtime missing: '+name)
     output.mkdir(parents=True,exist_ok=True)

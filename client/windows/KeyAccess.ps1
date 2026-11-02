@@ -25,14 +25,19 @@ namespace Civ6Relay.Access {
                     return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             }
         }
-        public static async Task<string> GetAsync(string url) {
-            using (var response = await Client.GetAsync(url).ConfigureAwait(false)) {
+        public static Task<string> GetAsync(string url) {
+            return GetAsync(url, false, System.Threading.CancellationToken.None);
+        }
+        public static async Task<string> GetAsync(string url, bool status, System.Threading.CancellationToken cancellation) {
+            using (var response = await Client.GetAsync(url, cancellation).ConfigureAwait(false)) {
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
                     response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed ||
                     response.StatusCode == System.Net.HttpStatusCode.NotImplemented)
-                    return "{\"error\":\"VERSION_UNAVAILABLE\",\"message\":\"此服务器未提供版本查询接口。\"}";
+                    return status ? "{\"error\":\"STATUS_UNAVAILABLE\",\"message\":\"此服务器未提供状态查询接口。\"}" :
+                        "{\"error\":\"VERSION_UNAVAILABLE\",\"message\":\"此服务器未提供版本查询接口。\"}";
                 if (!response.IsSuccessStatusCode)
-                    return "{\"error\":\"VERSION_QUERY_FAILED\",\"message\":\"服务器版本查询失败，请稍后重试。\"}";
+                    return status ? "{\"error\":\"STATUS_QUERY_FAILED\",\"message\":\"服务器状态暂时不可用。\"}" :
+                        "{\"error\":\"VERSION_QUERY_FAILED\",\"message\":\"服务器版本查询失败，请稍后重试。\"}";
                 return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             }
         }

@@ -46,6 +46,82 @@ def device_id(value):
         raise AccessError('INVALID_DEVICE', '客户端身份无效，请重新启动客户端。')
 
 
+class ServerLoad:
+    """Share one non-blocking Linux host sample across status requests."""
+    interval = 10
+
+    def __init__(self, proc=Path('/proc'), clock=time.monotonic, wall_clock=time.time):
+        self.proc, self.clock, self.wall_clock = Path(proc), clock, wall_clock
+        self.lock = threading.Lock()
+        self.previous = None
+        self.cached = None
+        self.next_sample = 0
+
+    def cpu(self):
+        try:
+            values = [int(value) for value in (self.proc/'stat').read_text().splitlines()[0].split()[1:9]]
+            return sum(values), values[3]+values[4]
+        except (OSError, ValueError, IndexError):
+            return None
+
+    def memory(self):
+        try:
+            values = dict((parts[0].rstrip(':'), int(parts[1])*1024)
+                          for parts in (line.split() for line in (self.proc/'meminfo').read_text().splitlines()))
+            total = values['MemTotal']
+            available = values.get('MemAvailable')
+            if available is None:
+                available = sum(values.get(name, 0) for name in ('MemFree','Buffers','Cached','SReclaimable'))-values.get('Shmem',0)
+            used = max(0, min(total, total-available))
+            return dict(memory_total_bytes=total, memory_used_bytes=used,
+                        memory_percent=round(used*100/total, 1) if total else None)
+        except (OSError, ValueError, KeyError, IndexError):
+            return dict(memory_total_bytes=None, memory_used_bytes=None, memory_percent=None)
+
+    def network(self):
+        try:
+            routes = [line.split() for line in (self.proc/'net/route').read_text().splitlines()[1:]]
+            defaults = [(int(row[6]), row[0]) for row in routes
+                        if row[1]=='00000000' and row[7]=='00000000' and int(row[3],16)&1]
+            if not defaults:
+                return None
+            interface = min(defaults)[1]
+            for line in (self.proc/'net/dev').read_text().splitlines()[2:]:
+                name, counters = line.split(':',1)
+                if name.strip()==interface:
+                    fields = counters.split()
+                    return interface, int(fields[0]), int(fields[8])
+        except (OSError, ValueError, IndexError):
+            pass
+        return None
+
+    def snapshot(self):
+        with self.lock:
+            now = self.clock()
+            if self.cached is not None and now < self.next_sample:
+                return self.cached
+            cpu, network = self.cpu(), self.network()
+            value = dict(sampled_at=int(self.wall_clock()), refresh_after_seconds=self.interval,
+                         sample_seconds=None, cpu_percent=None,
+                         network_interface=network[0] if network else None,
+                         network_rx_bps=None, network_tx_bps=None)
+            value.update(self.memory())
+            if self.previous is not None:
+                previous_at, previous_cpu, previous_network = self.previous
+                elapsed = now-previous_at
+                if elapsed > 0:
+                    value['sample_seconds'] = round(elapsed, 3)
+                    if cpu and previous_cpu and cpu[0] > previous_cpu[0]:
+                        total, idle = cpu[0]-previous_cpu[0], cpu[1]-previous_cpu[1]
+                        value['cpu_percent'] = round(max(0, min(100, (total-idle)*100/total)), 1)
+                    if network and previous_network and network[0]==previous_network[0]:
+                        value['network_rx_bps'] = round(max(0, network[1]-previous_network[1])*8/elapsed)
+                        value['network_tx_bps'] = round(max(0, network[2]-previous_network[2])*8/elapsed)
+            self.previous = now, cpu, network
+            self.cached, self.next_sample = value, now+self.interval
+            return value
+
+
 class MeshRooms:
     """Manage isolated network instances in one core process."""
     def __init__(self, config, root, runner=None):
@@ -218,6 +294,7 @@ class KeyService:
         ''')
         self.backend = backend or MeshRooms(config, self.root)
         self.issuance = defaultdict(deque)
+        self.load = ServerLoad()
 
     def now(self):
         return int(self.clock())
@@ -255,6 +332,18 @@ class KeyService:
     def room(self, identifier):
         row = self.db.execute('SELECT * FROM rooms WHERE id=?',(identifier,)).fetchone()
         return dict(row) if row else None
+
+    def room_counts(self):
+        with self.lock:
+            now = self.now()
+            if self.config.get('key_required',False):
+                active = self.db.execute('SELECT count(*) FROM rooms WHERE port IS NOT NULL AND expires_at>?',
+                                         (now,)).fetchone()[0]
+                maximum = self.config.get('max_rooms',4)
+            else:
+                active, maximum = 1, 1
+            return dict(active_rooms=active, max_rooms=maximum, available_rooms=maximum-active,
+                        sampled_at=now, refresh_after_seconds=ServerLoad.interval)
 
     def allocate(self, room):
         if room['port'] is not None:
@@ -431,6 +520,10 @@ class ApiHandler(BaseHTTPRequestHandler):
         if self.path == '/v1/version':
             self.reply(200,dict(server_version=relay.VERSION,
                                 engine_version=relay.ENGINE_VERSION,api_version=1))
+        elif self.path == '/v1/rooms':
+            self.reply(200,self.server.service.room_counts())
+        elif self.path == '/v1/load':
+            self.reply(200,self.server.service.load.snapshot())
         else:
             self.reply(404,dict(error='NOT_FOUND',message='接口不存在。'))
 

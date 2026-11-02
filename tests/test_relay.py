@@ -147,6 +147,7 @@ class PackageTests(unittest.TestCase):
             'Themes.json':b'{"classic":{},"civ6":{}}\n',
             'KeyAccess.ps1':b'\xef\xbb\xbf# key access fixture\n',
             'KeyLease.ps1':b'\xef\xbb\xbf# key lease fixture\n',
+            'ServerStatus.ps1':b'\xef\xbb\xbf# server status fixture\n',
         }
         for name,data in self.desktop.items():(self.root/'client/windows'/name).write_bytes(data)
         self.marker='dummy-private-package-marker'

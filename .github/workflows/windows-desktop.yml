@@ -29,6 +29,9 @@ jobs:
       - name: Exercise client Key HTTP integration
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/client-key.Tests.ps1
+      - name: Exercise server status polling
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/server-status.Tests.ps1
       - name: Exercise theme persistence and resources
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/client-theme.Tests.ps1

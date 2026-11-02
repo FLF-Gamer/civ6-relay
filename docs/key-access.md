@@ -82,3 +82,25 @@ sudo systemctl status civ6-relay.service
 ```
 
 免费与 Key 模式都提供版本接口。客户端中的 GitHub 地址和“下载新版”按钮用于打开项目主页及 Releases。
+
+## 服务器状态
+
+免费与 Key 模式都提供两个公开的只读接口，使用相同的 HTTP 接入端口，无需 Key。
+
+`GET /v1/rooms` 返回组网房间数量与容量：
+
+```json
+{"active_rooms":2,"max_rooms":4,"available_rooms":2,"sampled_at":1793635200,"refresh_after_seconds":10}
+```
+
+Key 模式统计已激活、尚未到期且占用端口的房间，包含暂时没有玩家在线的有效房间；未使用和已到期的 Key 不计入。免费模式提供一个共享组网房间。这里统计的是虚拟局域网，不是文明6游戏内创建的房间。接口只返回汇总数量。
+
+`GET /v1/load` 返回整台 Linux 主机的 CPU、内存和默认 IPv4 路由网卡流量：
+
+```json
+{"sampled_at":1793635200,"refresh_after_seconds":10,"sample_seconds":10.001,"cpu_percent":12.5,"memory_total_bytes":2147483648,"memory_used_bytes":608812728,"memory_percent":28.3,"network_interface":"eth0","network_rx_bps":64000,"network_tx_bps":128000}
+```
+
+CPU 和网卡速率按相邻采样的差值计算；收发速率单位为 bit/s，内存容量单位为 byte。首次采样的 CPU、网卡速率和采样间隔为 `null`，无法读取的指标也为 `null`。同一份负载采样缓存 10 秒，多个客户端共用，不为每个查询启动进程或阻塞等待。
+
+客户端连接期间每 10 秒异步查询一次，在大厅显示组网房间、CPU、内存和收发速率。断开后停止查询；旧版服务器不支持状态接口时显示“不支持查询”，连接功能仍可使用。

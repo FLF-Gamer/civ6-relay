@@ -20,6 +20,7 @@ $script:LiveLogDropped = 0L
 $script:LiveLogTotal = 0L
 $script:ComponentFiles = @('easytier-core.exe','easytier-cli.exe','wintun.dll','WinDivert64.sys')
 . (Join-Path $PSScriptRoot 'KeyAccess.ps1')
+. (Join-Path $PSScriptRoot 'ServerStatus.ps1')
 
 function Open-ProjectPage {
     param([ValidateSet('Repository','Releases')][string]$Page='Repository')

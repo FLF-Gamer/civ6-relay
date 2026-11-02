@@ -288,8 +288,12 @@
             <Border Grid.Row="2" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" MinHeight="248" ClipToBounds="True">
               <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="64"/><RowDefinition Height="33"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Margin="24,0,0,0"><TextBlock Text="在线玩家" FontSize="15" FontWeight="SemiBold"/><Border Background="{DynamicResource PrimaryBrush}" CornerRadius="5" Margin="10,0,0,0" VerticalAlignment="Center" Padding="7,2"><TextBlock x:Name="PlayerCount" Text="0" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="11"/></Border></StackPanel>
-                <TextBlock x:Name="StatusText" Text="未连接" HorizontalAlignment="Right" Margin="10,0,24,0" MaxWidth="430" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="24,10,0,0"><TextBlock Text="在线玩家" FontSize="15" FontWeight="SemiBold"/><Border Background="{DynamicResource PrimaryBrush}" CornerRadius="5" Margin="10,0,0,0" VerticalAlignment="Center" Padding="7,2"><TextBlock x:Name="PlayerCount" Text="0" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="11"/></Border></StackPanel>
+                <TextBlock x:Name="StatusText" Text="未连接" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10,15,24,0" MaxWidth="430" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                <WrapPanel VerticalAlignment="Bottom" Margin="24,0,24,8">
+                  <TextBlock x:Name="RoomStatusText" Text="组网房间：—" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,0,18,0"/>
+                  <TextBlock x:Name="ServerLoadText" Text="服务器负载：未连接" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
+                </WrapPanel>
                 <Border Grid.Row="1" Background="{DynamicResource HeaderBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1" Padding="24,0">
                   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="132"/><ColumnDefinition Width="106"/><ColumnDefinition Width="94"/><ColumnDefinition Width="74"/></Grid.ColumnDefinitions>
                     <TextBlock Text="玩家" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="1" Text="连接方式" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="2" Text="实时延迟" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="3" Text="链路延迟" Foreground="{DynamicResource MutedBrush}" FontSize="11"/><TextBlock Grid.Column="4" Text="更新于" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>

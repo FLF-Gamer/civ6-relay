@@ -218,6 +218,21 @@ class KeyTests(unittest.TestCase):
         finally:
             server.shutdown();server.server_close();worker.join(timeout=3)
 
+    def test_room_counts_include_only_activated_unexpired_rooms_without_mutating_them(self):
+        keys = [self.key() for _ in range(3)]
+        self.assertEqual(self.service.room_counts()['active_rooms'],0)
+        self.join(keys[0])
+        self.join(keys[1])
+        counts = self.service.room_counts()
+        self.assertEqual((counts['active_rooms'],counts['max_rooms'],counts['available_rooms']),(2,2,0))
+        events = len(self.backend.started), len(self.backend.stopped)
+        self.time += 48*3600
+        self.assertEqual(self.service.room_counts()['active_rooms'],0)
+        self.assertEqual((len(self.backend.started),len(self.backend.stopped)),events)
+        self.config['key_required'] = False
+        counts = self.service.room_counts()
+        self.assertEqual((counts['active_rooms'],counts['max_rooms'],counts['available_rooms']),(1,1,0))
+
     def test_version_http_is_public_in_free_and_key_modes_without_creating_access(self):
         server=access.ApiServer(('127.0.0.1',0),self.service)
         worker=threading.Thread(target=lambda:server.serve_forever(poll_interval=.01),daemon=True)
@@ -238,6 +253,17 @@ class KeyTests(unittest.TestCase):
                 self.assertEqual(result,dict(server_version=access.relay.VERSION,
                     engine_version=access.relay.ENGINE_VERSION,api_version=1))
                 self.assertEqual(cache,'no-store')
+                status,counts,_=get('/v1/rooms')
+                self.assertEqual(status,200)
+                self.assertEqual(counts,dict(active_rooms=0 if enabled else 1,
+                    max_rooms=2 if enabled else 1,available_rooms=2 if enabled else 0,
+                    sampled_at=self.time,refresh_after_seconds=10))
+                status,load,_=get('/v1/load')
+                self.assertEqual(status,200)
+                self.assertEqual(set(load),{'sampled_at','refresh_after_seconds','sample_seconds',
+                    'cpu_percent','memory_total_bytes','memory_used_bytes','memory_percent',
+                    'network_interface','network_rx_bps','network_tx_bps'})
+                self.assertEqual(load['refresh_after_seconds'],10)
             status,result,_=get('/v2/version')
             self.assertEqual((status,result['error']),(404,'NOT_FOUND'))
             self.assertEqual(self.service.db.execute('SELECT count(*) FROM rooms').fetchone()[0],0)

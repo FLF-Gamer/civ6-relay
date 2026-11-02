@@ -28,7 +28,7 @@ function Show-ModernRelayWindow {
     $c = @{}
     foreach ($name in @('NameInput','ServerInput','PortInput','KeyInput','GenerateKeyButton','CopyKeyButton','KeyInfo','ConnectButton','DisconnectButton',
         'LobbySaveButton','NavLobby','NavLogs','NavSettings','LobbyPage','LogsPage','SettingsPage',
-        'PlayerList','EmptyState','StatusText','PlayerCount','ConnectionDot','ConnectionLabel',
+        'PlayerList','EmptyState','StatusText','PlayerCount','ConnectionDot','ConnectionLabel','RoomStatusText','ServerLoadText',
         'LogBox','AutoScrollCheck','CopyLogButton','ExportLogButton','ClearLogButton','LogStatus',
         'LogFeedback','DiagnoseButton','ComponentButton','SaveButton','AutoDisconnectCheck',
         'ClientVersionText','ServerVersionText','ServerVersionButton','GithubButton','ReleasesButton',
@@ -37,7 +37,7 @@ function Show-ModernRelayWindow {
     }
     $ui = [pscustomobject]@{
         Busy=$false; Closed=$false; Connected=$false; MonitorStarted=$false; DisconnectedOnClose=$false; LastViewError=''
-        PendingTask=$null; PendingKind=''; ReadyAccess=$null; Theme=''
+        PendingTask=$null; PendingKind=''; ReadyAccess=$null; Theme=''; ServerStatus=(New-ServerStatusMonitor)
         Rows=(New-Object 'Collections.ObjectModel.ObservableCollection[Civ6Relay.Desktop.PeerRow]')
         RowsByIP=@{}; LogLines=(New-Object 'Collections.Generic.Queue[string]')
     }
@@ -126,6 +126,9 @@ function Show-ModernRelayWindow {
             $c.PlayerCount.Text = [string]$ui.Rows.Count
             $c.EmptyState.Visibility = if ($ui.Rows.Count -eq 0) { [Windows.Visibility]::Visible } else { [Windows.Visibility]::Collapsed }
             & $setControls
+            Update-ServerStatusMonitor $ui.ServerStatus $c.ServerInput.Text $c.PortInput.Text $ui.Connected
+            $c.RoomStatusText.Text = $ui.ServerStatus.RoomsText
+            $c.ServerLoadText.Text = $ui.ServerStatus.LoadText
             $ui.LastViewError = ''
         } catch {
             $message = '状态更新失败：' + $_.Exception.Message
@@ -389,6 +392,8 @@ function Show-ModernRelayWindow {
         if ($ui.Closed) { return }
         $ui.Closed = $true
         $statusTimer.Stop(); $logTimer.Stop(); $apiTimer.Stop()
+        Stop-ServerStatusMonitor $ui.ServerStatus
+        $ui.ServerStatus.Clock.Stop()
         if ($ui.MonitorStarted) {
             try { Stop-LiveMonitor } catch { Add-LiveLog ('停止监测失败：' + $_.Exception.Message) }
             $ui.MonitorStarted = $false
