@@ -28,7 +28,7 @@ function Show-ModernRelayWindow {
     $c = @{}
     foreach ($name in @('NameInput','ServerInput','PortInput','KeyInput','GenerateKeyButton','CopyKeyButton','KeyInfo','ConnectButton','DisconnectButton',
         'LobbySaveButton','NavLobby','NavLogs','NavSettings','LobbyPage','LogsPage','SettingsPage',
-        'PlayerList','EmptyState','StatusText','PlayerCount','ConnectionDot','ConnectionLabel','RoomStatusText','ServerLoadText',
+        'PlayerList','EmptyState','StatusText','PlayerCount','ConnectionDot','ConnectionLabel','RoomStatusText','ServerLoadText','ServerLoadDot',
         'LogBox','AutoScrollCheck','CopyLogButton','ExportLogButton','ClearLogButton','LogStatus',
         'LogFeedback','DiagnoseButton','ComponentButton','SaveButton','AutoDisconnectCheck',
         'ClientVersionText','ServerVersionText','ServerVersionButton','GithubButton','ReleasesButton',
@@ -129,6 +129,13 @@ function Show-ModernRelayWindow {
             Update-ServerStatusMonitor $ui.ServerStatus $c.ServerInput.Text $c.PortInput.Text $ui.Connected
             $c.RoomStatusText.Text = $ui.ServerStatus.RoomsText
             $c.ServerLoadText.Text = $ui.ServerStatus.LoadText
+            $loadBrush = switch ($ui.ServerStatus.LoadState) {
+                'green' { 'ServerLoadGreenBrush' }
+                'yellow' { 'ServerLoadYellowBrush' }
+                'red' { 'ServerLoadRedBrush' }
+                default { 'StatusIdleBrush' }
+            }
+            $c.ServerLoadDot.Fill = $brush[$loadBrush]
             $ui.LastViewError = ''
         } catch {
             $message = '状态更新失败：' + $_.Exception.Message

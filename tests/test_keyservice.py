@@ -262,9 +262,8 @@ class KeyTests(unittest.TestCase):
                     sampled_at=self.time,refresh_after_seconds=10))
                 status,load,_=get('/v1/load')
                 self.assertEqual(status,200)
-                self.assertEqual(set(load),{'sampled_at','refresh_after_seconds','sample_seconds',
-                    'cpu_percent','memory_total_bytes','memory_used_bytes','memory_percent',
-                    'network_interface','network_rx_bps','network_tx_bps'})
+                self.assertEqual(set(load),{'status','label','sampled_at','refresh_after_seconds'})
+                self.assertIn(load['status'],('green','yellow','red','unknown'))
                 self.assertEqual(load['refresh_after_seconds'],10)
             status,result,_=get('/v2/version')
             self.assertEqual((status,result['error']),(404,'NOT_FOUND'))

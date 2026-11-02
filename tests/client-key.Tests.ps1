@@ -111,10 +111,10 @@ try {
     try { Complete-ServerVersionRequest $task } catch { $invalid = $_.Exception.Message -eq '服务器未返回有效的版本信息。' }
     Assert $invalid 'Missing version information must not be presented as a successful query'
     foreach ($kind in @('rooms','load')) {
-        $fixture.Replies.Enqueue('{"active_rooms":2,"max_rooms":4,"cpu_percent":12.5}')
+        $fixture.Replies.Enqueue('{"active_rooms":2,"max_rooms":4,"status":"green","label":"正常"}')
         $task = Start-ServerStatusRequest '127.0.0.1' ([string]$fixture.Port) $kind ([Threading.CancellationToken]::None)
         $status = Complete-KeyApiRequest $task
-        Assert ($status.active_rooms -eq 2 -and $status.cpu_percent -eq 12.5) 'Server status response was not read.'
+        Assert ($status.active_rooms -eq 2 -and $status.status -eq 'green') 'Server status response was not read.'
         Assert ($fixture.Methods.ToArray()[-1] -eq 'GET' -and $fixture.Requests.ToArray()[-1] -eq ('/v1/'+$kind+' ')) 'Status query must not transmit a Key or device identity.'
     }
     foreach ($failure in @(@('__404__','STATUS_UNAVAILABLE'),@('__503__','STATUS_QUERY_FAILED'))) {

@@ -47,11 +47,14 @@ def device_id(value):
 
 
 class ServerLoad:
-    """Share one non-blocking Linux host sample across status requests."""
+    """Share a ten-second host pressure classification across requests."""
     interval = 10
 
-    def __init__(self, proc=Path('/proc'), clock=time.monotonic, wall_clock=time.time):
+    def __init__(self, proc=Path('/proc'), clock=time.monotonic, wall_clock=time.time, bandwidth_mbps=None):
         self.proc, self.clock, self.wall_clock = Path(proc), clock, wall_clock
+        self.bandwidth_bps = None if bandwidth_mbps is None else float(bandwidth_mbps)*1000000
+        if self.bandwidth_bps is not None and not self.bandwidth_bps > 0:
+            raise ValueError('bandwidth_mbps 必须大于 0。')
         self.lock = threading.Lock()
         self.previous = None
         self.cached = None
@@ -66,19 +69,19 @@ class ServerLoad:
 
     def memory(self):
         try:
-            values = dict((parts[0].rstrip(':'), int(parts[1])*1024)
+            values = dict((parts[0].rstrip(':'), int(parts[1]))
                           for parts in (line.split() for line in (self.proc/'meminfo').read_text().splitlines()))
             total = values['MemTotal']
             available = values.get('MemAvailable')
             if available is None:
                 available = sum(values.get(name, 0) for name in ('MemFree','Buffers','Cached','SReclaimable'))-values.get('Shmem',0)
-            used = max(0, min(total, total-available))
-            return dict(memory_total_bytes=total, memory_used_bytes=used,
-                        memory_percent=round(used*100/total, 1) if total else None)
+            return max(0, min(100, (total-available)*100/total)) if total else None
         except (OSError, ValueError, KeyError, IndexError):
-            return dict(memory_total_bytes=None, memory_used_bytes=None, memory_percent=None)
+            return None
 
     def network(self):
+        if self.bandwidth_bps is None:
+            return None
         try:
             routes = [line.split() for line in (self.proc/'net/route').read_text().splitlines()[1:]]
             defaults = [(int(row[6]), row[0]) for row in routes
@@ -89,8 +92,7 @@ class ServerLoad:
             for line in (self.proc/'net/dev').read_text().splitlines()[2:]:
                 name, counters = line.split(':',1)
                 if name.strip()==interface:
-                    fields = counters.split()
-                    return interface, int(fields[0]), int(fields[8])
+                    return interface, int(counters.split()[8])
         except (OSError, ValueError, IndexError):
             pass
         return None
@@ -101,22 +103,24 @@ class ServerLoad:
             if self.cached is not None and now < self.next_sample:
                 return self.cached
             cpu, network = self.cpu(), self.network()
-            value = dict(sampled_at=int(self.wall_clock()), refresh_after_seconds=self.interval,
-                         sample_seconds=None, cpu_percent=None,
-                         network_interface=network[0] if network else None,
-                         network_rx_bps=None, network_tx_bps=None)
-            value.update(self.memory())
+            pressure = [self.memory(), None]
+            if self.bandwidth_bps is not None:
+                pressure.append(None)
+            value = dict(status='unknown', label='检测中' if self.previous is None else '暂不可用',
+                         sampled_at=int(self.wall_clock()), refresh_after_seconds=self.interval)
             if self.previous is not None:
                 previous_at, previous_cpu, previous_network = self.previous
                 elapsed = now-previous_at
                 if elapsed > 0:
-                    value['sample_seconds'] = round(elapsed, 3)
                     if cpu and previous_cpu and cpu[0] > previous_cpu[0]:
                         total, idle = cpu[0]-previous_cpu[0], cpu[1]-previous_cpu[1]
-                        value['cpu_percent'] = round(max(0, min(100, (total-idle)*100/total)), 1)
-                    if network and previous_network and network[0]==previous_network[0]:
-                        value['network_rx_bps'] = round(max(0, network[1]-previous_network[1])*8/elapsed)
-                        value['network_tx_bps'] = round(max(0, network[2]-previous_network[2])*8/elapsed)
+                        pressure[1] = max(0, min(100, (total-idle)*100/total))
+                    if network and previous_network and network[0]==previous_network[0] and network[1]>=previous_network[1]:
+                        pressure[2] = (network[1]-previous_network[1])*8/elapsed/self.bandwidth_bps*100
+            if all(metric is not None for metric in pressure):
+                peak = max(pressure)
+                value.update(status='red' if peak>=90 else 'yellow' if peak>=70 else 'green',
+                             label='繁忙' if peak>=90 else '较高' if peak>=70 else '正常')
             self.previous = now, cpu, network
             self.cached, self.next_sample = value, now+self.interval
             return value
@@ -268,6 +272,7 @@ class MeshRooms:
 class KeyService:
     def __init__(self, config, root, backend=None, clock=time.time):
         self.config, self.root, self.clock = config, Path(root), clock
+        self.load = ServerLoad(bandwidth_mbps=config.get('bandwidth_mbps'))
         relay.private_dir(self.root)
         self.instance_lock = (self.root/'service.lock').open('a')
         try:
@@ -294,7 +299,6 @@ class KeyService:
         ''')
         self.backend = backend or MeshRooms(config, self.root)
         self.issuance = defaultdict(deque)
-        self.load = ServerLoad()
 
     def now(self):
         return int(self.clock())

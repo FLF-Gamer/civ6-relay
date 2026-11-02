@@ -79,7 +79,7 @@ function Start-ServerStatusRequest {
     $script:UiSmoke.StatusCalls++
     $script:UiSmoke.StatusTokens.Add($Cancellation)
     $reply = if ($Kind -eq 'rooms') { @{active_rooms=2;max_rooms=4} }
-             else { @{cpu_percent=12.5;memory_percent=28.3;network_tx_bps=128000;network_rx_bps=64000} }
+             else { @{status='green';label='正常'} }
     $task = New-Object 'Threading.Tasks.TaskCompletionSource[string]'
     $task.SetResult(($reply | ConvertTo-Json -Compress))
     return $task.Task
@@ -330,10 +330,11 @@ $script:UiSmokeTimer.Add_Tick({
                 if ($players.Items.Count -ne 2) { return }
                 Assert-UiSmoke ($script:UiSmoke.SuppliedKey -eq 'C6-EXAMPLE-KEY' -and $script:UiSmoke.KeyCalls -eq 3) 'Key did not accompany the first connect request.'
                 Assert-UiSmoke ($script:UiSmoke.ConnectCalls -eq 1 -and $script:UiSmoke.SaveCalls -eq 1) 'Connect did not invoke the fixture actions exactly once.'
-                if ((Get-UiSmokeElement $window 'RoomStatusText').Text -ne '组网房间：2 / 4') { return }
-                Assert-UiSmoke ((Get-UiSmokeElement $window 'ServerLoadText').Text -match 'CPU 12.5%.*内存 28.3%.*128.*64') 'Server load is missing or incorrectly formatted.'
+                if ((Get-UiSmokeElement $window 'RoomStatusText').Text -ne '组网房间：2 个（上限 4 个）') { return }
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'ServerLoadText').Text -eq '服务器负载：正常') 'Server load classification is missing.'
+                Assert-UiSmoke ((Get-UiSmokeElement $window 'ServerLoadDot').Fill.Color -eq [Windows.Media.ColorConverter]::ConvertFromString('#237A3B')) 'The normal load indicator is not green.'
                 Assert-UiSmokeVisible $window 'RoomStatusText' 60 12
-                Assert-UiSmokeVisible $window 'ServerLoadText' 160 12
+                Assert-UiSmokeVisible $window 'ServerLoadText' 60 12
                 Assert-UiSmokeLayout $window 'Lobby'
                 $channels=@($players.Items | ForEach-Object { [string]$_.Channel })
                 Assert-UiSmoke (@($channels | Where-Object { $_ -match 'P2P' }).Count -eq 1) 'The direct player path is missing.'

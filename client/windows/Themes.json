@@ -37,7 +37,10 @@
     "ErrorTextBrush": "#8A3333",
     "StatusIdleBrush": "#BBBBBB",
     "StatusActiveBrush": "#202020",
-    "StatusPendingBrush": "#646464"
+    "StatusPendingBrush": "#646464",
+    "ServerLoadGreenBrush": "#237A3B",
+    "ServerLoadYellowBrush": "#9B6A0A",
+    "ServerLoadRedBrush": "#B53D36"
   },
   "civ6": {
     "WindowBrush": "#F3EBD9",
@@ -77,6 +80,9 @@
     "ErrorTextBrush": "#8A3F30",
     "StatusIdleBrush": "#9CA3A6",
     "StatusActiveBrush": "#D7C18F",
-    "StatusPendingBrush": "#D7CEB9"
+    "StatusPendingBrush": "#D7CEB9",
+    "ServerLoadGreenBrush": "#237A3B",
+    "ServerLoadYellowBrush": "#9B6A0A",
+    "ServerLoadRedBrush": "#B53D36"
   }
 }
