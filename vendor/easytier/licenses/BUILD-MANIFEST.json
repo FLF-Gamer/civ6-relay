@@ -40,7 +40,7 @@
   },
   "patch": {
     "file": "EasyTier-fast-failover.patch",
-    "sha256": "9e422e222b9e6f9f15edc8d08c26016987e178ca13de29ed7ee191b4a36980b6"
+    "sha256": "8266c6ec24d2723f55e4a710aad90e0b7881cdc2695355c9cbd430f943c1e122"
   },
   "windows_runtime_dependencies": [
     "Windows 10/11 system libraries",
@@ -67,7 +67,7 @@
   },
   "windows_binaries": {
     "easytier-core.exe": {
-      "sha256": "02d5e9a55052d5b7bc5898d89a8f406ad5e96d7c7c252583ecee57aff81823a0",
+      "sha256": "9c4b6856fb2eda51b06244e0e35c2927e7c2e5513a3cd5947f40a21256c07ccf",
       "imports": [
         "bcryptprimitives.dll",
         "KERNEL32.dll",
@@ -85,7 +85,7 @@
       ]
     },
     "easytier-cli.exe": {
-      "sha256": "b046851e2c30f79c264fba32a3bbbc176bb7ddc33eee82022fe9d87f0c6c3b4b",
+      "sha256": "00b1ae57611b07f0734f6635aa55493e40211e43a71831ffbdd759340ab58a12",
       "imports": [
         "bcryptprimitives.dll",
         "combase.dll",
@@ -100,15 +100,15 @@
       ]
     }
   },
-  "windows_source_and_patch_sha256": "81197769ec286605ad3f9a28f75dfcd5a2131b4da1eecc5245b4be269920c520",
-  "linux_source_and_patch_sha256": "1b7db795ebcef35200e17be0d3716aad82e64489e6650c8963835dbf927616ff",
-  "windows_patch_sha256": "bb6073b1eb2e7bcbdd3e9425e16fcf9f6d04c4f28b8f51d63fb72347cb1862c9",
+  "windows_source_and_patch_sha256": "ffd8a68924bf1bf7e9458b3184d723b01f37585801c73339e9d65c3004869511",
+  "linux_source_and_patch_sha256": "ffd8a68924bf1bf7e9458b3184d723b01f37585801c73339e9d65c3004869511",
+  "windows_patch_sha256": "8266c6ec24d2723f55e4a710aad90e0b7881cdc2695355c9cbd430f943c1e122",
   "linux_binaries": {
     "easytier-core": {
-      "sha256": "e883d52a9215927a9075b52eb2494d03aa88259c17e79b4c1d64251ae15a9743"
+      "sha256": "648fb1115279f14c573819d7bf51fc5afcae684ba5b37380aedb229066b9d7d7"
     },
     "easytier-cli": {
-      "sha256": "a65a67f3e1b7d003099032ce9f046e68a8eb29f5104f79eddf7afbe0c8bbf6f9"
+      "sha256": "3cc5ef083456b29021d83eca4a4bc8f7753ac456379b055f911be35eb89b1c9d"
     }
   },
   "linux_cli_commands": [

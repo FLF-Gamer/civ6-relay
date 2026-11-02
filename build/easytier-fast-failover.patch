@@ -649,3 +649,78 @@
 +
 @@ -2881,0 +2947 @@
 +        SubCommand::Instance(args) => handler.handle_instance(args.command).await?,
+--- a/easytier/src/peers/relay_peer_map.rs
++++ b/easytier/src/peers/relay_peer_map.rs
+@@ -32,0 +33 @@
++    session: Option<Arc<PeerSession>>,
+@@ -40,0 +42 @@
++            session: None,
+@@ -176,3 +178 @@
+-        self.states.entry(dst_peer_id).or_default().last_active_at = now;
+-
+-        if self.is_secure_mode_enabled() {
++        let session = if self.is_secure_mode_enabled() {
+@@ -184,0 +185 @@
++                    Some(session)
+@@ -186,0 +188 @@
++                    self.states.entry(dst_peer_id).or_default().last_active_at = now;
+@@ -191,0 +194,8 @@
++        } else {
++            None
++        };
++        {
++            let mut state = self.states.entry(dst_peer_id).or_default();
++            state.last_active_at = now;
++            // Active relay traffic owns its session until the relay state becomes idle.
++            state.session = session;
+@@ -205,0 +216,5 @@
++        {
++            let mut state = self.states.entry(dst_peer_id).or_default();
++            state.last_active_at = Instant::now();
++            state.session = Some(session.clone());
++        }
+@@ -634 +649 @@
+-        let now = Instant::now();
++        session.decrypt_payload(from_peer_id, self.my_peer_id, packet)?;
+@@ -636,2 +651,2 @@
+-        entry.last_active_at = now;
+-        session.decrypt_payload(from_peer_id, self.my_peer_id, packet)?;
++        entry.last_active_at = Instant::now();
++        entry.session = Some(session);
+--- a/easytier/src/peers/tests.rs
++++ b/easytier/src/peers/tests.rs
+@@ -1630,0 +1631,34 @@
++
++#[tokio::test]
++async fn relay_sessions_gc_keeps_traffic_and_releases_idle_state() {
++    for receive in [false, true] {
++        let (sender, _receiver) = create_packet_recv_chan();
++        let ctx = get_mock_global_ctx_with_network(Some(NetworkIdentity::new(
++            "relay-gc".to_string(), "secret".to_string(),
++        )));
++        set_secure_mode_cfg(&ctx, true);
++        let peers = Arc::new(PeerMap::new(sender, ctx.clone(), 10));
++        let store = Arc::new(PeerSessionStore::new());
++        let relay = RelayPeerMap::new(peers, None, ctx.clone(), 10, store.clone());
++        let key = SessionKey::new(ctx.get_network_name(), 20);
++        let session = || Arc::new(PeerSession::new(
++            20, [9u8; 32], 1, 0,
++            "aes-256-gcm".to_string(), "aes-256-gcm".to_string(), None,
++        ));
++        store.insert_session(key.clone(), session());
++        let mut packet = ZCPacket::new_with_payload(b"relay activity");
++        if receive {
++            packet.fill_peer_manager_hdr(20, 10, PacketType::Data as u8);
++            session().encrypt_payload(20, 10, &mut packet).unwrap();
++            assert!(relay.decrypt_if_needed(&mut packet).await.unwrap());
++        } else {
++            packet.fill_peer_manager_hdr(10, 20, PacketType::Data as u8);
++            let _ = relay.send_msg(packet, 20, NextHopPolicy::LeastHop).await;
++        }
++        store.evict_unused_sessions();
++        assert!(store.get(&key).is_some(), "active relay session was collected");
++        relay.evict_idle_sessions(Duration::ZERO);
++        store.evict_unused_sessions();
++        assert!(store.get(&key).is_none(), "idle relay session was retained");
++    }
++}

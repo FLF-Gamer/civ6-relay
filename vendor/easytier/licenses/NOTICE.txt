@@ -1,7 +1,9 @@
 This package includes a modified EasyTier 2.6.4 build, 2.6.4-civ6.2.
-Modifications for Civ6 Relay, 2026-10-30: fast relay failover between
+Modifications for Civ6 Relay, 2026-11-02: fast relay failover between
 credential clients, recovery hysteresis, cached authenticated coordinator
-selection, and data-path route status. The wire format is unchanged.
+selection, data-path route status, active relay session ownership, and
+local RPC management of independent network instances within one core
+process. The wire format is unchanged.
 License: GNU LGPL version 3.
 Source commit: 8428a89d2dabc94c97d370ec607c6ca142473626
 Upstream: https://github.com/EasyTier/EasyTier
@@ -43,7 +45,3 @@ library as a private build input; it is not redistributed in this package.
 Its official BSD-style license is preserved in WinPcap-SDK-LICENSE.txt,
 and its source URL and hashes are in BUILD-MANIFEST.json. This does not
 license or redistribute any Npcap DLL.
-
-Linux CLI modifications for Civ6 Relay, 2026-11-02: local RPC commands
-list, start and stop independent network instances within one core
-process. Game traffic and client wire formats are unchanged.
