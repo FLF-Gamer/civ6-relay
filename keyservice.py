@@ -342,7 +342,7 @@ class KeyService:
                 maximum = self.config.get('max_rooms',4)
             else:
                 active, maximum = 1, 1
-            return dict(active_rooms=active, max_rooms=maximum, available_rooms=maximum-active,
+            return dict(active_rooms=active, max_rooms=maximum, available_rooms=max(0,maximum-active),
                         sampled_at=now, refresh_after_seconds=ServerLoad.interval)
 
     def allocate(self, room):

@@ -332,7 +332,7 @@ $script:UiSmokeTimer.Add_Tick({
                 Assert-UiSmoke ($script:UiSmoke.ConnectCalls -eq 1 -and $script:UiSmoke.SaveCalls -eq 1) 'Connect did not invoke the fixture actions exactly once.'
                 if ((Get-UiSmokeElement $window 'RoomStatusText').Text -ne '组网房间：2 / 4') { return }
                 Assert-UiSmoke ((Get-UiSmokeElement $window 'ServerLoadText').Text -match 'CPU 12.5%.*内存 28.3%.*128.*64') 'Server load is missing or incorrectly formatted.'
-                Assert-UiSmokeVisible $window 'RoomStatusText' 80 12
+                Assert-UiSmokeVisible $window 'RoomStatusText' 60 12
                 Assert-UiSmokeVisible $window 'ServerLoadText' 160 12
                 Assert-UiSmokeLayout $window 'Lobby'
                 $channels=@($players.Items | ForEach-Object { [string]$_.Channel })

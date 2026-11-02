@@ -225,6 +225,8 @@ class KeyTests(unittest.TestCase):
         self.join(keys[1])
         counts = self.service.room_counts()
         self.assertEqual((counts['active_rooms'],counts['max_rooms'],counts['available_rooms']),(2,2,0))
+        self.config['max_rooms'] = 1
+        self.assertEqual(self.service.room_counts()['available_rooms'],0)
         events = len(self.backend.started), len(self.backend.stopped)
         self.time += 48*3600
         self.assertEqual(self.service.room_counts()['active_rooms'],0)
